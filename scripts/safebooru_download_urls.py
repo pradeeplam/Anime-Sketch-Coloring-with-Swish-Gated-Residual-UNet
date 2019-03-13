@@ -3,7 +3,7 @@
 """Downloads images from the Safebooru CSV located at:
 kaggle.com/alamson/safebooru
 """
-
+import argparse
 import os
 import subprocess
 from multiprocessing import Pool
