@@ -1,5 +1,5 @@
 """
-Builds the UNet model generator model (and discriminator) as described in paper:
+Builds the UNet model model as described in paper:
 "Anime Sketch Colowing with Swish-Gated Residual U-Net"
 """
 from keras.layers import (Activation, Conv2D, Conv2DTranspose, Cropping2D, Input, LeakyReLU,
@@ -34,7 +34,7 @@ def Swish(inputs, cropping=((0,1),(0,1)), data_format='channels_last'):
     return swish
 
 
-def build_model_generator():
+def build_model():
 
     image_channels = 3
     inputs = Input((None, None, image_channels))
@@ -130,7 +130,3 @@ def build_model_generator():
                         kernel_initializer='he_normal')(conv1_3_up)
 
     return Model(inputs, conv1_4_up)
-
-
-def build_model_dis(args):
-    pass
