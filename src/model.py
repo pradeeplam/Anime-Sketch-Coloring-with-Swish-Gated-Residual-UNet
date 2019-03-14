@@ -2,8 +2,10 @@
 Builds the UNet model model as described in paper:
 "Anime Sketch Colowing with Swish-Gated Residual U-Net"
 """
-from keras.layers import (Activation, Conv2D, Conv2DTranspose, Cropping2D, Input, LeakyReLU,
-                          MaxPooling2D, Multiply, concatenate)
+import tensorflow as tf
+from tf.layers import (Conv2D, Conv2DTranspose, Cropping2D, Input, LeakyReLU,
+                       MaxPooling2D, Multiply, concatenate)
+from tf.nn import leaky_relu, swish
 from keras.models import Model
 
 
@@ -15,7 +17,7 @@ def Conv2DLReLUBase(conv_func, inputs, filters, kernel_size=2, strides=2, paddin
         strides=strides,
         padding=padding,
         kernel_initializer=kernel_initializer)(inputs)
-    layer = LeakyReLU(alpha=alpha)(layer)
+    layer = leaky_relu(alpha=alpha)(layer)
     return layer
 
 
@@ -27,13 +29,6 @@ def Conv2DTransposeLReLU(*args, **kwargs):
     return Conv2DLReLUBase(conv_func=Conv2DTranspose, *args, **kwargs)
 
 
-def Swish(inputs, cropping=((0,1),(0,1)), data_format='channels_last'):
-    swish = Activation('sigmoid')(inputs)
-    swish = Multiply()([swish, inputs])
-    swish = Cropping2D(cropping=cropping, data_format=data_format)(swish)
-    return swish
-
-
 def build_model():
 
     image_channels = 3
@@ -43,7 +38,7 @@ def build_model():
     conv1_2 = Conv2DLReLU(filters=96, kernel_size=3, inputs=conv1_1)
     max_pool1 = MaxPooling2D()(conv1_2) 
 
-    swish1_2 = Swish(inputs=inputs)
+    swish1_2 = swish(inputs)
     inputs2  = concatenate([max_pool1, swish1_2])
 
     conv2_1 = Conv2DLReLU(filters=192, kernel_size=1, inputs=inputs2) 
