@@ -33,9 +33,7 @@ def Swish(inputs):
     return layer
 
 
-def build_model():
-
-    inputs = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='inputs')
+def build_model(inputs):
 
     conv1_1 = Conv2DLReLU(filters=96, kernel_size=3, inputs=inputs) 
     conv1_2 = Conv2DLReLU(filters=96, kernel_size=3, inputs=conv1_1)
@@ -127,4 +125,4 @@ def build_model():
     conv1_4_up = tf.layers.Conv2D(filters=27, kernel_size=1, activation=None, padding='same',
                                   kernel_initializer='he_normal')(conv1_3_up)
 
-    return inputs, conv1_4_up
+    return conv1_4_up
