@@ -33,96 +33,55 @@ def Swish(inputs):
     return layer
 
 
-def build_model(inputs):
+class SGRU(object):
 
-    conv1_1 = Conv2DLReLU(filters=96, kernel_size=3, inputs=inputs) 
-    conv1_2 = Conv2DLReLU(filters=96, kernel_size=3, inputs=conv1_1)
-    max_pool1 = tf.layers.MaxPooling2D(pool_size=2, strides=2)(conv1_2) 
+    def __init__(self, inputs):
+        self.inputs = inputs
 
-    swish1_2 = Swish(inputs)
-    inputs2  = tf.concat([max_pool1, swish1_2], axis=3)
+        inputs, conv1 = self.swish_gated_block('SGB_1', inputs, 96, conv1x1=False)
+        inputs, conv2 = self.swish_gated_block('SGB_2', inputs, 192)
+        inputs, conv3 = self.swish_gated_block('SGB_3', inputs, 288)
+        inputs, conv4 = self.swish_gated_block('SGB_4', inputs, 384)
+        inputs, conv5 = self.swish_gated_block('SGB_5', inputs, 480)
 
-    conv2_1 = Conv2DLReLU(filters=192, kernel_size=1, inputs=inputs2) 
-    conv2_2 = Conv2DLReLU(filters=192, kernel_size=3, inputs=conv2_1)
-    conv2_3 = Conv2DLReLU(filters=192, kernel_size=3, inputs=conv2_2) 
-    max_pool2 = tf.layers.MaxPooling2D(pool_size=2, strides=2)(conv2_3)
+        swish1 = Swish(conv1)
+        swish2 = Swish(conv2)
+        swish3 = Swish(conv3)
+        swish4 = Swish(conv4)
+        swish5 = Swish(conv5)
 
-    swish2_3 = Swish(conv2_1)
-    inputs3  = tf.concat([max_pool2, swish2_3], axis=3)
+        inputs, _ = self.swish_gated_block('SGB_5_up', inputs, 512, cat=[swish5])
+        inputs, _ = self.swish_gated_block('SGB_4_up', inputs, 480, cat=[swish4])
+        inputs, _ = self.swish_gated_block('SGB_3_up', inputs, 384, cat=[swish3])
+        inputs, _ = self.swish_gated_block('SGB_2_up', inputs, 288, cat=[swish2])
+        inputs, _ = self.swish_gated_block('SGB_1_up', inputs, 192, cat=[swish1])
 
-    conv3_1 = Conv2DLReLU(filters=288, kernel_size=1, inputs=inputs3) 
-    conv3_2 = Conv2DLReLU(filters=288, kernel_size=3, inputs=conv3_1) 
-    conv3_3 = Conv2DLReLU(filters=288, kernel_size=3, inputs=conv3_2) 
-    max_pool3 = tf.layers.MaxPooling2D(pool_size=2, strides=2)(conv3_3)
-
-    swish3_4 = Swish(conv3_1)
-    inputs4  = tf.concat([max_pool3, swish3_4], axis=3)
-
-    conv4_1 = Conv2DLReLU(filters=384, kernel_size=1, inputs=inputs4) 
-    conv4_2 = Conv2DLReLU(filters=384, kernel_size=3, inputs=conv4_1) 
-    conv4_3 = Conv2DLReLU(filters=384, kernel_size=3, inputs=conv4_2) 
-    max_pool4 = tf.layers.MaxPooling2D(pool_size=2, strides=2)(conv4_3)
-
-    swish4_5 = Swish(conv4_1)
-    inputs5  = tf.concat([max_pool4, swish4_5], axis=3)
-
-    conv5_1 = Conv2DLReLU(filters=480, kernel_size=1, inputs=inputs5) 
-    conv5_2 = Conv2DLReLU(filters=480, kernel_size=3, inputs=conv5_1) 
-    conv5_3 = Conv2DLReLU(filters=480, kernel_size=3, inputs=conv5_2) 
-    max_pool5 = tf.layers.MaxPooling2D(pool_size=2, strides=2)(conv5_3)
-
-    swish5_6 = Swish(conv5_1)
-    inputs6  = tf.concat([max_pool5, swish5_6], axis=3)
-
-    conv6_1 = Conv2DLReLU(filters=512, kernel_size=1, inputs=inputs6) 
-    conv6_2 = Conv2DLReLU(filters=512, kernel_size=3, inputs=conv6_1) 
-    conv6_3 = Conv2DLReLU(filters=512, kernel_size=3, inputs=conv6_2) 
-    deconv6 = Conv2DTransposeLReLU(filters=512, inputs=conv6_3) 
-
-    swish6_5 = Swish(conv6_1)
-    swish5_5 = Swish(conv5_3)
-    inputs5_up = tf.concat([swish6_5, swish5_5, deconv6], axis=3)
-
-    conv5_1_up = Conv2DLReLU(filters=480, kernel_size=1, inputs=inputs5_up)
-    conv5_2_up = Conv2DLReLU(filters=480, kernel_size=3, inputs=conv5_1_up) 
-    conv5_3_up = Conv2DLReLU(filters=480, kernel_size=3, inputs=conv5_2_up) 
-    deconv5 = Conv2DTransposeLReLU(filters=480, inputs=conv5_3_up) 
-
-    swish5_4 = Swish(conv5_1_up)
-    swish4_4 = Swish(conv4_3)
-    inputs4_up = tf.concat([swish5_4, swish4_4, deconv5], axis=3)
-
-    conv4_1_up = Conv2DLReLU(filters=384, kernel_size=1, inputs=inputs4_up) 
-    conv4_2_up = Conv2DLReLU(filters=384, kernel_size=3, inputs=conv4_1_up) 
-    conv4_3_up = Conv2DLReLU(filters=384, kernel_size=3, inputs=conv4_2_up) 
-    deconv4 = Conv2DTransposeLReLU(filters=384, inputs=conv4_3_up) 
-
-    swish4_3 = Swish(conv4_1_up)
-    swish3_3 = Swish(conv3_3)
-    inputs3_up = tf.concat([swish4_3, swish3_3, deconv4], axis=3)
-
-    conv3_1_up = Conv2DLReLU(filters=288, kernel_size=1, inputs=inputs3_up) 
-    conv3_2_up = Conv2DLReLU(filters=288, kernel_size=3, inputs=conv3_1_up) 
-    conv3_3_up = Conv2DLReLU(filters=288, kernel_size=3, inputs=conv3_2_up) 
-    deconv3 = Conv2DTransposeLReLU(filters=288, inputs=conv3_3_up) 
-
-    swish3_2 = Swish(conv3_1_up) 
-    swish2_2 = Swish(conv2_3)
-    inputs2_up = tf.concat([swish3_2, swish2_2, deconv3], axis=3)
-
-    conv2_1_up = Conv2DLReLU(filters=192, kernel_size=1, inputs=inputs2_up) 
-    conv2_2_up = Conv2DLReLU(filters=192, kernel_size=3, inputs=conv2_1_up) 
-    conv2_3_up = Conv2DLReLU(filters=192, kernel_size=3, inputs=conv2_2_up) 
-    deconv2 = Conv2DTransposeLReLU(filters=192, inputs=conv2_3_up) 
-
-    swish2_1 = Swish(conv2_1_up)
-    swish1_1 = Swish(conv1_2)
-    inputs1_up = tf.concat([swish2_1, swish1_1, deconv2], axis=3)
-
-    conv1_1_up = Conv2DLReLU(filters=96, kernel_size=1, inputs=inputs1_up)
-    conv1_2_up = Conv2DLReLU(filters=96, kernel_size=3, inputs=conv1_1_up) 
-    conv1_3_up = Conv2DLReLU(filters=96, kernel_size=3, inputs=conv1_2_up) 
-    conv1_4_up = tf.layers.Conv2D(filters=27, kernel_size=1, activation=None, padding='same',
+        conv1_1_up = Conv2DLReLU(filters=96, kernel_size=1, inputs=inputs)
+        conv1_2_up = Conv2DLReLU(filters=96, kernel_size=3, inputs=conv1_1_up)
+        conv1_3_up = Conv2DLReLU(filters=96, kernel_size=3, inputs=conv1_2_up)
+        conv1_4_up = tf.layers.Conv2D(filters=27, kernel_size=1, activation=None, padding='same',
                                   kernel_initializer='he_normal')(conv1_3_up)
 
-    return conv1_4_up
+        self.output = conv1_4_up
+
+    # swish_gated block takes in a input tensor and returns two objects, one of
+    # which is the concat operation found in the SGB, and the other is the
+    # output of the last convolutional layer (before maxpool or deconv)
+    #
+    # (Think of a better variable name than cat)
+    # If the cat list is an empty list, we assume we are in the down part of the
+    # Unet. Otherwise, we are in the up part.
+    def swish_gated_block(self, name, inputs, filters, cat=[], conv1x1=True):
+
+        if conv1x1:
+            inputs = Conv2DLReLU(filters=filters, kernel_size=1, inputs=inputs)
+
+        conv1 = Conv2DLReLU(filters=filters, kernel_size=3, inputs=inputs)
+        conv2 = Conv2DLReLU(filters=filters, kernel_size=3, inputs=conv1)
+
+        if cat == []:
+            sgb_op = tf.layers.MaxPooling2D(pool_size=2, strides=2)(conv2)
+        else:
+            sgb_op = Conv2DTransposeLReLU(filters=filters, inputs=conv2)
+
+        return tf.concat([sgb_op, Swish(inputs)] + cat, axis=3), conv2
