@@ -58,8 +58,7 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real):
             mask = tf.image.resize_images(image_bw[0], tf.shape(act_fake)[:2])
             mask = tf.reduce_mean(mask, axis=2)
 
-            # for filter_num in range(act_fake.shape[-1]):
-            for filter_num in range(min(act_fake.shape[-1], 5)):
+            for filter_num in range(act_fake.shape[-1]):
 
                 filter_fake = act_fake[:, :, filter_num]
                 filter_real = act_real[:, :, filter_num]
@@ -72,7 +71,7 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real):
     return tf.reduce_min(losses)
 
 
-def train(loss_func, image_bw, image_rgb_real, data_dir, vgg_fname, epochs, batch_size):
+def train(loss_func, optim_func, image_bw, image_rgb_real, data_dir, vgg_fname, epochs, batch_size):
     
     # Load VGG variables
     variables_to_restore = tf.contrib.framework.get_variables_to_restore()
@@ -98,7 +97,7 @@ def train(loss_func, image_bw, image_rgb_real, data_dir, vgg_fname, epochs, batc
                     image_bw: batch_bw,
                     image_rgb_real: batch_rgb
                 }
-                loss = sess.run([loss_func], feed_dict=feed_dict)
+                loss, _ = sess.run([loss_func, optim_func], feed_dict=feed_dict)
                 print(f'Epoch {epoch}, loss: {loss}')
 
                 losses.append(loss)
@@ -116,9 +115,10 @@ def main(args):
     image_rgb_fake = model.output
 
     loss_func = build_loss_func(image_bw, image_rgb_fake, image_rgb_real)
+    optimizer_func = tf.train.AdamOptimizer().minimize(loss_func)
 
-    train(loss_func, image_bw, image_rgb_real, args.data_dir, args.vgg_fname, args.epochs,
-          args.batch_size)
+    train(loss_func, optimizer_func, image_bw, image_rgb_real, args.data_dir, args.vgg_fname,
+          args.epochs, args.batch_size)
 
 
 def get_args():
