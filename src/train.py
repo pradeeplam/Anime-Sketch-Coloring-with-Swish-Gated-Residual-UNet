@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
-
 import argparse
+import os
+import sys
+
+import tensorflow as tf
+import tensorflow.contrib.slim as slim
+import tensorflow.contrib.slim.nets
 
 from image_generator import ImageGenerator
 from model import build_model
 
 
+def build_loss_func(image_bw, images_rgb_fake, image_rgb_real):
 
-def build_loss_func(image_bw, image_rgb_fake, image_rgb_real, model):
-
-    vgg19 = tf.contrib.slim.nets.vgg.vgg19
+    vgg = tf.contrib.slim.nets.vgg
 
     lambda_weights = [0.88, 0.79, 0.63, 0.51, 0.39, 1.07]
 
-    _, end_points_real = nets.vgg.vgg_19(image_rgb_real)
-    _, end_points_fake = nets.vgg.vgg_19(image_rgb_fake)
+    with tf.variable_scope('', reuse=tf.AUTO_REUSE):
+        _, end_points_real = vgg.vgg_19(image_rgb_real, is_training=False)
 
     layers = [
         'input',
@@ -25,40 +29,64 @@ def build_loss_func(image_bw, image_rgb_fake, image_rgb_real, model):
         'vgg_19/conv5/conv5_2',
     ]
 
-    losses = tf.zeros(9, trainable=False)
+    collection_size = 2
+    losses = tf.zeros(collection_size)
 
     # Iterate through Unet output collection
-    for i in range(9):
+    for i in range(collection_size):
+
+        print(f'Building loss for collection image {i}')
+
+        image_rgb_fake = images_rgb_fake[:, :, :, i*3:(i+1)*3]
+
+        with tf.variable_scope('', reuse=tf.AUTO_REUSE):
+            _, end_points_fake = vgg.vgg_19(image_rgb_fake, is_training=False)
 
         for weight, layer in zip(lambda_weights, layers):
 
-            # Grab ith image in Unet output collection
-            act_fake = end_points_fake[layer][i*3:(i+1)*3]
-            act_real = end_points_real[layer]
+            if layer == 'input':
+                act_fake = image_rgb_fake[0]
+                act_real = image_rgb_real[0]
+            else:
+                act_fake = end_points_fake[layer][0]
+                act_real = end_points_real[layer][0]
 
-            mask = tf.image.resize(image_bw, act_real.shape)
+            # Resize image (and convert it to greyscale?)
+            mask = tf.image.resize_images(image_bw[0], tf.shape(act_fake)[:2])
+            mask = tf.reduce_mean(mask, axis=2)
 
-            for filter_num in range(act_real.shape[-1]):
+            for filter_num in range(act_fake.shape[-1]):
 
                 filter_fake = act_fake[:, :, filter_num]
                 filter_real = act_real[:, :, filter_num]
 
-                loss_inner = weight * tf.norm(tf.mul(mask, filter_fake-fake_real), 1)
-                tf.assign_add(losses[i], loss_inner)
+                loss_inner = weight * tf.norm(tf.multiply(mask, filter_fake-filter_real), 1)
+                loss_inner = tf.one_hot(i, collection_size, on_value=loss_inner)
+                losses += loss_inner
 
     loss = tf.reduce_min(losses)
     return loss
 
 
-def train(model, loss_func, image_bw, image_rgb_real, data_gen, saver, epochs, batch_size):
+def train(loss_func, image_bw, image_rgb_real, data_dir, vgg_fname, epochs, batch_size):
     
+    # Load VGG variables
+    variables_to_restore = tf.contrib.framework.get_variables_to_restore()
+    vgg_init_fn = tf.contrib.framework.assign_from_checkpoint_fn(vgg_fname, variables_to_restore,
+                                                                 ignore_missing_vars=True)
+
     with tf.Session() as sess:
+
+        # Initialize all variables
+        sess.run(tf.initializers.global_variables())
+        # Initialize VGG variables (these were reset during global initialization)
+        vgg_init_fn(sess)
 
         losses = []
 
         for epoch in range(epochs):
 
-            image_generator = ImageGenerator(args.data_dir, args.batch_size)
+            image_generator = ImageGenerator(data_dir, batch_size)
 
             for batch_bw, batch_rgb in image_generator.load_batches():
 
@@ -67,29 +95,31 @@ def train(model, loss_func, image_bw, image_rgb_real, data_gen, saver, epochs, b
                     image_rgb_real: batch_rgb
                 }
                 loss = sess.run([loss_func], feed_dict=feed_dict)
+                print(f'[Epoch {epoch}, loss: {loss}')
 
-            losses.append(loss)
+                losses.append(loss)
 
 
 def main(args):
 
-    saver = tf.train.Saver()
+    if not os.path.isfile(args.vgg_fname):
+        sys.exit('Download VGG19 checkpoint from ' +
+                 'http://download.tensorflow.org/models/vgg_19_2016_08_28.tar.gz')
 
     image_rgb_real = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='img_real')
     image_bw = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='img_fake')
-    model = build_model(image_bw)
-    image_rgb_fake = model(image_bw)
+    image_rgb_fake = build_model(image_bw)
 
-    loss_func = build_loss_func(image_bw, image_rgb_fake, image_rgb_real, model)
+    loss_func = build_loss_func(image_bw, image_rgb_fake, image_rgb_real)
 
-    train(model, loss_func, image_bw, image_rgb_real, image_generator, saver, args.epochs,
+    train(loss_func, image_bw, image_rgb_real, args.data_dir, args.vgg_fname, args.epochs,
           args.batch_size)
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_dir', help='Directory containing image subdirs')
-    parser.add_argument('model_fname', help='Model filename')
+    parser.add_argument('vgg_fname', help='VGG checkpoint filename')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
     parser.add_argument('--resume', action='store_true', help='Resume training models')

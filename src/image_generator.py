@@ -1,7 +1,8 @@
 import os
 import random
 
-import tensorflow as tf
+import cv2
+import numpy as np
 
 
 class ImageGenerator(object):
@@ -14,30 +15,33 @@ class ImageGenerator(object):
 
     def get_image_fnames(self, image_dir):
 
-        image_bw_dir = os.path.join(args.data_dir, 'images_bw')
-        image_rgb_dir = os.path.join(args.data_dir, 'images_rgb')
+
+        image_bw_dir = os.path.join(image_dir, 'images_bw')
+        image_rgb_dir = os.path.join(image_dir, 'images_rgb')
 
         result = []
 
         for path_bw in os.listdir(image_bw_dir):
 
             # Check extension of filename
-            if path_bw.split('.')[-1] not in ['.jpg', '.jpeg', '.png', '.gif']:
+            if path_bw.split('.')[-1] not in ['jpg', 'jpeg', 'png', 'gif']:
                 continue
 
-            # Check that RGB image exists
             path_rgb = path_bw.replace('images_bw', 'images_bw')
-            if not os.path.isfile(path_rgb):
+
+            path_bw_full = os.path.join(image_bw_dir, path_bw)
+            path_rgb_full = os.path.join(image_rgb_dir, path_rgb)
+
+            if not os.path.isfile(path_rgb_full):
                 continue
 
-            result.append((path_bw, path_rgb))
+            result.append((path_bw_full, path_rgb_full))
 
         return result
 
 
     def load_image(self, fname):
-        image = tf.read_file(fname)
-        image = tf.image.decode_image(image)
+        image = cv2.imread(fname).astype(np.float32)
         image /= 255.0
         return image
 
@@ -56,7 +60,7 @@ class ImageGenerator(object):
             batch_bw.append(image_bw)
             batch_rgb.append(image_rgb)
 
-            if len(batch) >= self.batch_size:
+            if len(batch_bw) >= self.batch_size:
                 yield batch_bw, batch_rgb
                 batch_bw = []
                 batch_rgb = []
