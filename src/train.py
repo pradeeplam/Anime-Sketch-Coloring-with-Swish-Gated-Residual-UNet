@@ -61,6 +61,8 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real):
                 filter_real = act_real[:, :, filter_num]
 
                 loss_inner = weight * tf.norm(tf.multiply(mask, filter_fake-filter_real), 1)
+                # The following two lines is a complicated way of doing: losses[i] += loss_inner,
+                # which is not possible because tensors don't support direct indexing
                 loss_inner = tf.one_hot(i, collection_size, on_value=loss_inner)
                 losses += loss_inner
 
