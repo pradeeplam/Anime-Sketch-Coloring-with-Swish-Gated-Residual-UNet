@@ -58,7 +58,8 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real):
             mask = tf.image.resize_images(image_bw[0], tf.shape(act_fake)[:2])
             mask = tf.reduce_mean(mask, axis=2)
 
-            for filter_num in range(act_fake.shape[-1]):
+            # for filter_num in range(act_fake.shape[-1]):
+            for filter_num in range(min(act_fake.shape[-1], 5)):
 
                 filter_fake = act_fake[:, :, filter_num]
                 filter_real = act_real[:, :, filter_num]
@@ -98,7 +99,7 @@ def train(loss_func, image_bw, image_rgb_real, data_dir, vgg_fname, epochs, batc
                     image_rgb_real: batch_rgb
                 }
                 loss = sess.run([loss_func], feed_dict=feed_dict)
-                print(f'[Epoch {epoch}, loss: {loss}')
+                print(f'Epoch {epoch}, loss: {loss}')
 
                 losses.append(loss)
 

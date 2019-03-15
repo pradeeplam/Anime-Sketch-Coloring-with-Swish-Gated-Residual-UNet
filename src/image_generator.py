@@ -43,6 +43,7 @@ class ImageGenerator(object):
     def load_image(self, fname):
         image = cv2.imread(fname).astype(np.float32)
         image /= 255.0
+        image = cv2.resize(image, (128, 128))
         return image
 
 
