@@ -4,21 +4,23 @@ import os
 import sys
 
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
 import tensorflow.contrib.slim.nets
 
 from image_generator import ImageGenerator
 from model import SGRU
 
 
-def build_loss_func(image_bw, images_rgb_fake, image_rgb_real):
+def vgg_19_evaluate(image):
+    with tf.variable_scope('', reuse=tf.AUTO_REUSE):
+        _, end_points = tf.contrib.slim.nets.vgg.vgg_19(image, is_training=False)
+    return end_points
 
-    vgg = tf.contrib.slim.nets.vgg
+
+def build_loss_func(image_bw, images_rgb_fake, image_rgb_real):
 
     lambda_weights = [0.88, 0.79, 0.63, 0.51, 0.39, 1.07]
 
-    with tf.variable_scope('', reuse=tf.AUTO_REUSE):
-        _, end_points_real = vgg.vgg_19(image_rgb_real, is_training=False)
+    end_points_real = vgg_19_evaluate(image_rgb_real)
 
     layers = [
         'input',
@@ -29,18 +31,19 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real):
         'vgg_19/conv5/conv5_2',
     ]
 
-    collection_size = 2
-    losses = tf.zeros(collection_size)
+    losses = []
 
     # Iterate through Unet output collection
+    collection_size = 9
     for i in range(collection_size):
+
+        loss = tf.Variable(0.0)
 
         print(f'Building loss for collection image {i}')
 
         image_rgb_fake = images_rgb_fake[:, :, :, i*3:(i+1)*3]
 
-        with tf.variable_scope('', reuse=tf.AUTO_REUSE):
-            _, end_points_fake = vgg.vgg_19(image_rgb_fake, is_training=False)
+        end_points_fake = vgg_19_evaluate(image_rgb_fake)
 
         for weight, layer in zip(lambda_weights, layers):
 
@@ -61,14 +64,11 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real):
                 filter_real = act_real[:, :, filter_num]
 
                 loss_inner = weight * tf.norm(tf.multiply(mask, filter_fake-filter_real), 1)
+                loss = loss + loss_inner
 
-                # The next two lines represent a complicated way of doing: losses[i] += loss_inner,
-                # which is not possible because tensors don't support direct indexing
-                loss_inner = tf.one_hot(i, collection_size, on_value=loss_inner)
-                losses += loss_inner
+        losses.append(loss)
 
-    loss = tf.reduce_min(losses)
-    return loss
+    return tf.reduce_min(losses)
 
 
 def train(loss_func, image_bw, image_rgb_real, data_dir, vgg_fname, epochs, batch_size):
