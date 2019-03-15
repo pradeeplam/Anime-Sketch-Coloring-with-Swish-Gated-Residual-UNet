@@ -8,7 +8,7 @@ import tensorflow.contrib.slim as slim
 import tensorflow.contrib.slim.nets
 
 from image_generator import ImageGenerator
-from model import build_model
+from model import SGRU
 
 
 def build_loss_func(image_bw, images_rgb_fake, image_rgb_real):
@@ -29,7 +29,7 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real):
         'vgg_19/conv5/conv5_2',
     ]
 
-    collection_size = 9
+    collection_size = 2
     losses = tf.zeros(collection_size)
 
     # Iterate through Unet output collection
@@ -111,7 +111,8 @@ def main(args):
 
     image_rgb_real = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='img_real')
     image_bw = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='img_fake')
-    image_rgb_fake = build_model(image_bw)
+    model = SGRU(image_bw)
+    image_rgb_fake = model.output
 
     loss_func = build_loss_func(image_bw, image_rgb_fake, image_rgb_real)
 

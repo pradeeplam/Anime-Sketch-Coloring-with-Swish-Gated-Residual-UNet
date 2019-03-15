@@ -28,7 +28,7 @@ def Conv2DTransposeLReLU(*args, **kwargs):
 
 def Swish(inputs):
     # Do we put a convolution in here?
-    conv =
+    # conv =
     layer = tf.nn.swish(inputs)
     layer = tf.layers.MaxPooling2D(pool_size=2, strides=2)(layer)
     return layer
