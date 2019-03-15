@@ -56,15 +56,10 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real):
 
             # Resize image (and convert it to greyscale?)
             mask = tf.image.resize_images(image_bw[0], tf.shape(act_fake)[:2])
-            mask = tf.reduce_mean(mask, axis=2)
+            mask = tf.expand_dims(tf.reduce_mean(mask, axis=2), axis=2)
 
-            for filter_num in range(act_fake.shape[-1]):
-
-                filter_fake = act_fake[:, :, filter_num]
-                filter_real = act_real[:, :, filter_num]
-
-                loss_inner = weight * tf.norm(tf.multiply(mask, filter_fake-filter_real), 1)
-                loss = loss + loss_inner
+            loss_inner = weight * tf.norm(tf.multiply(mask, act_fake-act_real), 1)
+            loss = loss + loss_inner
 
         losses.append(loss)
 
@@ -126,7 +121,7 @@ def get_args():
     parser.add_argument('data_dir', help='Directory containing image subdirs')
     parser.add_argument('vgg_fname', help='VGG checkpoint filename')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
-    parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
+    parser.add_argument('--batch_size', type=int, default=4, help='Batch size')
     parser.add_argument('--resume', action='store_true', help='Resume training models')
     return parser.parse_args()
 

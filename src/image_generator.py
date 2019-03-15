@@ -15,7 +15,6 @@ class ImageGenerator(object):
 
     def get_image_fnames(self, image_dir):
 
-
         image_bw_dir = os.path.join(image_dir, 'images_bw')
         image_rgb_dir = os.path.join(image_dir, 'images_rgb')
 
