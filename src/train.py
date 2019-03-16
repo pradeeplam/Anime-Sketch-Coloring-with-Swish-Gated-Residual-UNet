@@ -81,18 +81,24 @@ def save_images(output_dir, image_rgb_fake, iteration):
     cv2.imwrite(output_fname, out_image)
 
 
-def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, data_dir, vgg_fname,
-          epochs, batch_size, output_dir, save_every):
+def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, data_dir, model_ckpt,
+          vgg_ckpt, epochs, batch_size, output_dir, save_every):
     
     # Load VGG variables
     variables_to_restore = tf.contrib.framework.get_variables_to_restore()
-    vgg_init_fn = tf.contrib.framework.assign_from_checkpoint_fn(vgg_fname, variables_to_restore,
+    vgg_init_fn = tf.contrib.framework.assign_from_checkpoint_fn(vgg_ckpt, variables_to_restore,
                                                                  ignore_missing_vars=True)
+
+    # Add an op to initialize the variables.
+    init_op = tf.global_variables_initializer()
+
+    # Add ops to save and restore all the variables.
+    saver = tf.train.Saver()
 
     with tf.Session() as sess:
 
         # Initialize all variables
-        sess.run(tf.initializers.global_variables())
+        sess.run(init_op)
         # Initialize VGG variables (these were reset during global initialization)
         vgg_init_fn(sess)
 
@@ -120,11 +126,13 @@ def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, data_
                 iteration += 1
                 if iteration % save_every == 0:
                     save_images(output_dir, image_rgb_fake_out, iteration)
+                    saver.save(sess, model_ckpt)
+
 
 
 def main(args):
 
-    if not os.path.isfile(args.vgg_fname):
+    if not os.path.isfile(args.vgg_ckpt):
         sys.exit('Download VGG19 checkpoint from ' +
                  'http://download.tensorflow.org/models/vgg_19_2016_08_28.tar.gz')
 
@@ -137,14 +145,16 @@ def main(args):
     optimizer_func = tf.train.AdamOptimizer().minimize(loss_func)
 
     train(loss_func, optimizer_func, image_bw, image_rgb_fake, image_rgb_real, args.data_dir,
-          args.vgg_fname, args.epochs, args.batch_size, args.output_dir, args.save_every)
+          args.model_ckpt, args.vgg_ckpt, args.epochs, args.batch_size, args.output_dir,
+          args.save_every)
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_dir', help='Directory containing image subdirs')
     parser.add_argument('output_dir', help='Output directory')
-    parser.add_argument('vgg_fname', help='VGG checkpoint filename')
+    parser.add_argument('model_ckpt', help='This network\'s checkpoint file')
+    parser.add_argument('vgg_ckpt', help='VGG checkpoint filename')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--batch_size', type=int, default=4, help='Batch size')
     parser.add_argument('--resume', action='store_true', help='Resume training models')
