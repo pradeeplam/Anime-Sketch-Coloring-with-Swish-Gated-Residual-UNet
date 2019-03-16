@@ -37,7 +37,7 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real, batch_size):
     collection_size = 9
     for i in range(collection_size):
 
-        loss = tf.zeros(batch_size)
+        loss = tf.Variable(0.0)
 
         print(f'Building loss for collection image {i}')
 
@@ -58,15 +58,12 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real, batch_size):
             mask = tf.image.resize_images(image_bw[0], tf.shape(act_fake)[1:3])
             mask = tf.expand_dims(tf.reduce_mean(mask, axis=2), axis=2)
 
-            loss_inner = tf.multiply(mask, act_fake-act_real)
-            loss_inner = tf.reshape(loss_inner, [batch_size, -1])
-            loss_inner = tf.norm(loss_inner, 1, axis=1)
-
+            loss_inner = tf.norm(tf.multiply(mask, act_fake-act_real), 1)
             loss = loss + loss_inner
 
         losses.append(loss)
 
-    return tf.reduce_min(losses, axis=0)
+    return tf.reduce_min(losses)
 
 
 def train(loss_func, optim_func, image_bw, image_rgb_real, data_dir, vgg_fname, epochs, batch_size):
