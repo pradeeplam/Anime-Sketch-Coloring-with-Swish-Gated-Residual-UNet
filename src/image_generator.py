@@ -26,7 +26,7 @@ class ImageGenerator(object):
             if path_bw.split('.')[-1] not in ['jpg', 'jpeg', 'png', 'gif']:
                 continue
 
-            path_rgb = path_bw.replace('images_bw', 'images_bw')
+            path_rgb = path_bw.replace('images_bw', 'images_rgb')
 
             path_bw_full = os.path.join(image_bw_dir, path_bw)
             path_rgb_full = os.path.join(image_rgb_dir, path_rgb)
@@ -42,7 +42,7 @@ class ImageGenerator(object):
     def load_image(self, fname):
         image = cv2.imread(fname).astype(np.float32)
         image /= 255.0
-        image = cv2.resize(image, (128, 128))
+        image = cv2.resize(image, (224, 224))
         return image
 
 

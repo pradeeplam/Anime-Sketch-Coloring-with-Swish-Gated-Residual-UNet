@@ -16,7 +16,7 @@ def vgg_19_evaluate(image):
     return end_points
 
 
-def build_loss_func(image_bw, images_rgb_fake, image_rgb_real):
+def build_loss_func(image_bw, images_rgb_fake, image_rgb_real, batch_size):
 
     lambda_weights = [0.88, 0.79, 0.63, 0.51, 0.39, 1.07]
 
@@ -37,7 +37,7 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real):
     collection_size = 9
     for i in range(collection_size):
 
-        loss = tf.Variable(0.0)
+        loss = tf.zeros(batch_size)
 
         print(f'Building loss for collection image {i}')
 
@@ -48,22 +48,25 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real):
         for weight, layer in zip(lambda_weights, layers):
 
             if layer == 'input':
-                act_fake = image_rgb_fake[0]
-                act_real = image_rgb_real[0]
+                act_fake = image_rgb_fake
+                act_real = image_rgb_real
             else:
-                act_fake = end_points_fake[layer][0]
-                act_real = end_points_real[layer][0]
+                act_fake = end_points_fake[layer]
+                act_real = end_points_real[layer]
 
             # Resize image (and convert it to greyscale?)
-            mask = tf.image.resize_images(image_bw[0], tf.shape(act_fake)[:2])
+            mask = tf.image.resize_images(image_bw[0], tf.shape(act_fake)[1:3])
             mask = tf.expand_dims(tf.reduce_mean(mask, axis=2), axis=2)
 
-            loss_inner = weight * tf.norm(tf.multiply(mask, act_fake-act_real), 1)
+            loss_inner = tf.multiply(mask, act_fake-act_real)
+            loss_inner = tf.reshape(loss_inner, [batch_size, -1])
+            loss_inner = tf.norm(loss_inner, 1, axis=1)
+
             loss = loss + loss_inner
 
         losses.append(loss)
 
-    return tf.reduce_min(losses)
+    return tf.reduce_min(losses, axis=0)
 
 
 def train(loss_func, optim_func, image_bw, image_rgb_real, data_dir, vgg_fname, epochs, batch_size):
@@ -104,12 +107,12 @@ def main(args):
         sys.exit('Download VGG19 checkpoint from ' +
                  'http://download.tensorflow.org/models/vgg_19_2016_08_28.tar.gz')
 
-    image_rgb_real = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='img_real')
-    image_bw = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='img_fake')
+    image_rgb_real = tf.placeholder(tf.float32, shape=[None, 224, 224, 3], name='img_real')
+    image_bw = tf.placeholder(tf.float32, shape=[None, 224, 224, 3], name='img_fake')
     model = SGRU(image_bw)
     image_rgb_fake = model.output
 
-    loss_func = build_loss_func(image_bw, image_rgb_fake, image_rgb_real)
+    loss_func = build_loss_func(image_bw, image_rgb_fake, image_rgb_real, args.batch_size)
     optimizer_func = tf.train.AdamOptimizer().minimize(loss_func)
 
     train(loss_func, optimizer_func, image_bw, image_rgb_real, args.data_dir, args.vgg_fname,
