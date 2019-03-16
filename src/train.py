@@ -3,6 +3,8 @@ import argparse
 import os
 import sys
 
+import cv2
+import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.slim.nets
 
@@ -39,8 +41,6 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real, batch_size):
 
         loss = tf.Variable(0.0)
 
-        print(f'Building loss for collection image {i}')
-
         image_rgb_fake = images_rgb_fake[:, :, :, i*3:(i+1)*3]
 
         end_points_fake = vgg_19_evaluate(image_rgb_fake)
@@ -66,7 +66,23 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real, batch_size):
     return tf.reduce_min(losses)
 
 
-def train(loss_func, optim_func, image_bw, image_rgb_real, data_dir, vgg_fname, epochs, batch_size):
+def save_images(output_dir, image_rgb_fake, iteration):
+    """Tile images"""
+    batches = (image_rgb_fake * 255).astype(np.uint8)
+
+    row_images = []
+    for batch in batches:
+        row = [batch[:, :, i*3:(i+1)*3] for i in range(9)]
+        row_image = np.hstack(row)
+        row_images.append(row_image)
+    out_image = np.vstack(row_images)
+
+    output_fname = os.path.join(output_dir, f'{iteration}.jpg')
+    cv2.imwrite(output_fname, out_image)
+
+
+def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, data_dir, vgg_fname,
+          epochs, batch_size, output_dir, save_every):
     
     # Load VGG variables
     variables_to_restore = tf.contrib.framework.get_variables_to_restore()
@@ -82,6 +98,8 @@ def train(loss_func, optim_func, image_bw, image_rgb_real, data_dir, vgg_fname, 
 
         losses = []
 
+        iteration = 0
+
         for epoch in range(epochs):
 
             image_generator = ImageGenerator(data_dir, batch_size)
@@ -92,10 +110,16 @@ def train(loss_func, optim_func, image_bw, image_rgb_real, data_dir, vgg_fname, 
                     image_bw: batch_bw,
                     image_rgb_real: batch_rgb
                 }
-                loss, _ = sess.run([loss_func, optim_func], feed_dict=feed_dict)
-                print(f'Epoch {epoch}, loss: {loss}')
+                image_rgb_fake_out, loss, _ = sess.run([image_rgb_fake, loss_func, optim_func],
+                                                        feed_dict=feed_dict)
+
+                print(f'Epoch {epoch}, iteration: {iteration}, loss: {loss}')
 
                 losses.append(loss)
+
+                iteration += 1
+                if iteration % save_every == 0:
+                    save_images(output_dir, image_rgb_fake_out, iteration)
 
 
 def main(args):
@@ -104,25 +128,27 @@ def main(args):
         sys.exit('Download VGG19 checkpoint from ' +
                  'http://download.tensorflow.org/models/vgg_19_2016_08_28.tar.gz')
 
-    image_rgb_real = tf.placeholder(tf.float32, shape=[None, 224, 224, 3], name='img_real')
-    image_bw = tf.placeholder(tf.float32, shape=[None, 224, 224, 3], name='img_fake')
+    image_rgb_real = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='img_real')
+    image_bw = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='img_fake')
     model = SGRU(image_bw)
     image_rgb_fake = model.output
 
     loss_func = build_loss_func(image_bw, image_rgb_fake, image_rgb_real, args.batch_size)
     optimizer_func = tf.train.AdamOptimizer().minimize(loss_func)
 
-    train(loss_func, optimizer_func, image_bw, image_rgb_real, args.data_dir, args.vgg_fname,
-          args.epochs, args.batch_size)
+    train(loss_func, optimizer_func, image_bw, image_rgb_fake, image_rgb_real, args.data_dir,
+          args.vgg_fname, args.epochs, args.batch_size, args.output_dir, args.save_every)
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_dir', help='Directory containing image subdirs')
+    parser.add_argument('output_dir', help='Output directory')
     parser.add_argument('vgg_fname', help='VGG checkpoint filename')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--batch_size', type=int, default=4, help='Batch size')
     parser.add_argument('--resume', action='store_true', help='Resume training models')
+    parser.add_argument('--save-every', type=int, default=1, help='Save image every n iterations')
     return parser.parse_args()
 
 
