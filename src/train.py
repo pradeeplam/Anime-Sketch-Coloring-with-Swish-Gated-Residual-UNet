@@ -77,7 +77,7 @@ def save_images(output_dir, image_rgb_fake, iteration):
         row_images.append(row_image)
     out_image = np.vstack(row_images)
 
-    output_fname = os.path.join(output_dir, f'{iteration}.jpg')
+    output_fname = os.path.join(output_dir, '{}.jpg'.format(iteration))
     cv2.imwrite(output_fname, out_image)
 
 
@@ -113,7 +113,7 @@ def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, data_
                 image_rgb_fake_out, loss, _ = sess.run([image_rgb_fake, loss_func, optim_func],
                                                         feed_dict=feed_dict)
 
-                print(f'Epoch {epoch}, iteration: {iteration}, loss: {loss}')
+                print('Epoch {}, iteration: {}, loss: {}'.format(epoch, iteration, loss))
 
                 losses.append(loss)
 

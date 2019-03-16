@@ -43,7 +43,7 @@ class ImageGenerator(object):
         image = cv2.imread(fname).astype(np.float32)
         image /= 255.0
         if image.shape[0] % 32 != 0 or image.shape[1] % 32:
-            raise Exception(f'{fname} is not divisible by 32!')
+            raise Exception('{} is not divisible by 32!'.format(fname))
         return image
 
 
