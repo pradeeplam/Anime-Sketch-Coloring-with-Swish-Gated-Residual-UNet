@@ -107,10 +107,16 @@ def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, data_
 
         for epoch in range(epochs):
 
-            image_generator = ImageGenerator(data_dir, batch_size)
+            image_generator = ImageGenerator(data_dir, batch_size, is_training=True)
 
-            for batch_bw, batch_rgb in image_generator.load_batches():
+            bw_img, rgb_img = image_generator.load_batches()
 
+            while True:
+                try:
+                    batch_bw, batch_rgb = sess.run([bw_img, rgb_img])
+                except:
+                    break
+       
                 feed_dict = {
                     image_bw: batch_bw,
                     image_rgb_real: batch_rgb
