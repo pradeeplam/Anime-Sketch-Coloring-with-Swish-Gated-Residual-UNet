@@ -54,7 +54,8 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real, batch_size):
                 act_fake = end_points_fake[layer]
                 act_real = end_points_real[layer]
 
-            mask = tf.image.resize_images(image_bw, tf.shape(act_fake)[1:3])
+            # Resize image
+            mask = tf.image.resize_images(image_bw[0], tf.shape(act_fake)[1:3])
 
             loss_inner = tf.norm(tf.multiply(mask, act_fake-act_real), 1)
             loss = loss + loss_inner
@@ -145,7 +146,7 @@ def main(args):
     image_rgb_fake = model.output
 
     loss_func = build_loss_func(image_bw, image_rgb_fake, image_rgb_real, args.batch_size)
-    optimizer_func = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(loss_func)
+    optimizer_func = tf.train.AdamOptimizer(learning_rate=0.00005).minimize(loss_func)
 
     train(loss_func, optimizer_func, image_bw, image_rgb_fake, image_rgb_real, args.data_dir,
           args.model_ckpt, args.vgg_ckpt, args.epochs, args.batch_size, args.output_dir,
