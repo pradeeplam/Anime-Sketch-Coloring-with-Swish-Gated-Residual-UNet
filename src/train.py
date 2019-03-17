@@ -54,9 +54,8 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real, batch_size):
                 act_fake = end_points_fake[layer]
                 act_real = end_points_real[layer]
 
-            # Resize image (and convert it to greyscale?)
+            # Resize image
             mask = tf.image.resize_images(image_bw[0], tf.shape(act_fake)[1:3])
-            mask = tf.expand_dims(tf.reduce_mean(mask, axis=2), axis=2)
 
             loss_inner = tf.norm(tf.multiply(mask, act_fake-act_real), 1)
             loss = loss + loss_inner
@@ -129,7 +128,6 @@ def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, data_
                     saver.save(sess, model_ckpt)
 
 
-
 def main(args):
 
     if not os.path.isfile(args.vgg_ckpt):
@@ -137,12 +135,12 @@ def main(args):
                  'http://download.tensorflow.org/models/vgg_19_2016_08_28.tar.gz')
 
     image_rgb_real = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='img_real')
-    image_bw = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='img_fake')
+    image_bw = tf.placeholder(tf.float32, shape=[None, None, None, 1], name='img_fake')
     model = SGRU(image_bw)
     image_rgb_fake = model.output
 
     loss_func = build_loss_func(image_bw, image_rgb_fake, image_rgb_real, args.batch_size)
-    optimizer_func = tf.train.AdamOptimizer().minimize(loss_func)
+    optimizer_func = tf.train.AdamOptimizer(learning_rate=0.00005).minimize(loss_func)
 
     train(loss_func, optimizer_func, image_bw, image_rgb_fake, image_rgb_real, args.data_dir,
           args.model_ckpt, args.vgg_ckpt, args.epochs, args.batch_size, args.output_dir,
@@ -156,7 +154,7 @@ def get_args():
     parser.add_argument('model_ckpt', help='This network\'s checkpoint file')
     parser.add_argument('vgg_ckpt', help='VGG checkpoint filename')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
-    parser.add_argument('--batch_size', type=int, default=4, help='Batch size')
+    parser.add_argument('--batch-size', type=int, default=4, help='Batch size')
     parser.add_argument('--resume', action='store_true', help='Resume training models')
     parser.add_argument('--save-every', type=int, default=1, help='Save image every n iterations')
     return parser.parse_args()

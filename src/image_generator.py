@@ -39,12 +39,13 @@ class ImageGenerator(object):
         return result
 
 
-    def load_image(self, fname):
-        image = cv2.imread(fname).astype(np.float32)
+    def load_image(self, fname, read_mode=cv2.IMREAD_GRAYSCALE):
+        image = cv2.imread(fname, read_mode).astype(np.float32)
         image /= 255.0
         if image.shape[0] % 32 != 0 or image.shape[1] % 32:
             raise Exception('{} is not divisible by 32!'.format(fname))
-        return image
+        image = cv2.resize(image, (128, 128))
+        return image[:, :, np.newaxis] if read_mode == cv2.IMREAD_GRAYSCALE else image
 
 
     def load_batches(self):
@@ -56,7 +57,7 @@ class ImageGenerator(object):
         for path_bw, path_rgb in self.image_fnames:
 
             image_bw = self.load_image(path_bw)
-            image_rgb = self.load_image(path_rgb)
+            image_rgb = self.load_image(path_rgb, cv2.IMREAD_COLOR)
 
             batch_bw.append(image_bw)
             batch_rgb.append(image_rgb)
