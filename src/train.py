@@ -81,7 +81,7 @@ def save_images(output_dir, image_rgb_fake, iteration):
 
 
 def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, data_dir, model_ckpt,
-          vgg_ckpt, epochs, batch_size, output_dir, save_every):
+          vgg_ckpt, epochs, batch_size, output_dir, save_every, num_cpus):
     
     # Load VGG variables
     variables_to_restore = tf.contrib.framework.get_variables_to_restore()
@@ -103,19 +103,15 @@ def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, data_
 
         losses = []
 
-        iteration = 0
+        image_generator = ImageGenerator(data_dir, batch_size, num_cpus)
+
+        batch_bw_op, batch_rgb_op = image_generator.load_batches()
 
         for epoch in range(epochs):
 
-            image_generator = ImageGenerator(data_dir, batch_size, is_training=True)
+            for batch_num in range(image_generator.num_batches):
 
-            bw_img, rgb_img = image_generator.load_batches()
-
-            while True:
-                try:
-                    batch_bw, batch_rgb = sess.run([bw_img, rgb_img])
-                except:
-                    break
+                batch_bw, batch_rgb = sess.run([batch_bw_op, batch_rgb_op])
        
                 feed_dict = {
                     image_bw: batch_bw,
@@ -124,13 +120,12 @@ def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, data_
                 image_rgb_fake_out, loss, _ = sess.run([image_rgb_fake, loss_func, optim_func],
                                                         feed_dict=feed_dict)
 
-                print('Epoch {}, iteration: {}, loss: {}'.format(epoch, iteration, loss))
+                print('Epoch {}, batch number: {}, loss: {}'.format(epoch, batch_num, loss))
 
                 losses.append(loss)
 
-                iteration += 1
-                if iteration % save_every == 0:
-                    save_images(output_dir, image_rgb_fake_out, iteration)
+                if batch_num % save_every == 0:
+                    save_images(output_dir, image_rgb_fake_out, batch_num)
                     saver.save(sess, model_ckpt)
 
 
@@ -150,7 +145,7 @@ def main(args):
 
     train(loss_func, optimizer_func, image_bw, image_rgb_fake, image_rgb_real, args.data_dir,
           args.model_ckpt, args.vgg_ckpt, args.epochs, args.batch_size, args.output_dir,
-          args.save_every)
+          args.save_every, args.num_cpus)
 
 
 def get_args():
@@ -163,6 +158,7 @@ def get_args():
     parser.add_argument('--batch-size', type=int, default=4, help='Batch size')
     parser.add_argument('--resume', action='store_true', help='Resume training models')
     parser.add_argument('--save-every', type=int, default=1, help='Save image every n iterations')
+    parser.add_argument('--num-cpus', type=int, default=4, help='Num CPUs to load images with')
     return parser.parse_args()
 
 
