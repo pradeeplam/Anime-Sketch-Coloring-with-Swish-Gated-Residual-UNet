@@ -55,9 +55,9 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real, batch_size):
                 act_real = end_points_real[layer]
 
             # Resize image
-            mask = tf.image.resize_images(image_bw[0], tf.shape(act_fake)[1:3])
+            mask = tf.image.resize_images(image_bw, tf.shape(act_fake)[1:3])
 
-            loss_inner = tf.norm(tf.multiply(mask, act_fake-act_real), 1)
+            loss_inner = weight * tf.norm(tf.multiply(mask, act_fake-act_real), 1)
             loss = loss + loss_inner
 
         losses.append(loss)
@@ -82,12 +82,12 @@ def save_images(output_dir, image_rgb_fake, iteration):
     cv2.imwrite(output_fname, out_image)
 
 
-def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, data_dir, model_ckpt,
-          vgg_ckpt, epochs, batch_size, output_dir, save_every, num_cpus):
+def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, args):
 
     # Load VGG variables
     variables_to_restore = tf.contrib.framework.get_variables_to_restore()
-    vgg_init_fn = tf.contrib.framework.assign_from_checkpoint_fn(vgg_ckpt, variables_to_restore,
+    vgg_init_fn = tf.contrib.framework.assign_from_checkpoint_fn(args.vgg_ckpt,
+                                                                 variables_to_restore,
                                                                  ignore_missing_vars=True)
 
     # Add an op to initialize the variables.
@@ -100,7 +100,7 @@ def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, data_
 
         # Summary operations for tensorboard
         summary_op = tf.summary.merge_all()
-        writer = tf.summary.FileWriter(output_dir, graph=sess.graph)
+        writer = tf.summary.FileWriter(args.output_dir, graph=sess.graph)
 
         # Initialize all variables
         sess.run(init_op)
@@ -109,11 +109,11 @@ def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, data_
 
         losses = []
 
-        image_generator = ImageGenerator(data_dir, batch_size, num_cpus)
+        image_generator = ImageGenerator(args.data_dir, args.batch_size, args.num_cpus)
 
         batch_bw_op, batch_rgb_op = image_generator.load_batches()
 
-        for epoch in range(epochs):
+        for epoch in range(args.epochs):
 
             for batch_num in range(image_generator.num_batches):
 
@@ -133,9 +133,9 @@ def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, data_
 
                 losses.append(loss)
 
-                if batch_num % save_every == 0:
-                    save_images(output_dir, image_rgb_fake_out, batch_num)
-                    saver.save(sess, model_ckpt)
+                if batch_num % args.save_every == 0:
+                    save_images(args.output_dir, image_rgb_fake_out, batch_num)
+                    saver.save(sess, args.model_ckpt)
 
 
 def main(args):
@@ -152,9 +152,7 @@ def main(args):
     loss_func = build_loss_func(image_bw, image_rgb_fake, image_rgb_real, args.batch_size)
     optimizer_func = tf.train.AdamOptimizer(learning_rate=0.00005).minimize(loss_func)
 
-    train(loss_func, optimizer_func, image_bw, image_rgb_fake, image_rgb_real, args.data_dir,
-          args.model_ckpt, args.vgg_ckpt, args.epochs, args.batch_size, args.output_dir,
-          args.save_every, args.num_cpus)
+    train(loss_func, optimizer_func, image_bw, image_rgb_fake, image_rgb_real, args)
 
 
 def get_args():
