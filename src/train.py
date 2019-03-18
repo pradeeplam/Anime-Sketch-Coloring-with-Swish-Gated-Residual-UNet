@@ -62,7 +62,9 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real, batch_size):
 
         losses.append(loss)
 
-    return tf.reduce_min(losses)
+    loss = tf.reduce_min(losses)
+    tf.summary.scalar('Loss', loss)
+    return loss
 
 
 def save_images(output_dir, image_rgb_fake, iteration):
@@ -82,7 +84,7 @@ def save_images(output_dir, image_rgb_fake, iteration):
 
 def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, data_dir, model_ckpt,
           vgg_ckpt, epochs, batch_size, output_dir, save_every, num_cpus):
-    
+
     # Load VGG variables
     variables_to_restore = tf.contrib.framework.get_variables_to_restore()
     vgg_init_fn = tf.contrib.framework.assign_from_checkpoint_fn(vgg_ckpt, variables_to_restore,
@@ -95,6 +97,10 @@ def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, data_
     saver = tf.train.Saver()
 
     with tf.Session() as sess:
+
+        # Summary operations for tensorboard
+        summary_op = tf.summary.merge_all()
+        writer = tf.summary.FileWriter(output_dir, graph=sess.graph)
 
         # Initialize all variables
         sess.run(init_op)
@@ -112,13 +118,16 @@ def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, data_
             for batch_num in range(image_generator.num_batches):
 
                 batch_bw, batch_rgb = sess.run([batch_bw_op, batch_rgb_op])
-       
+
                 feed_dict = {
                     image_bw: batch_bw,
                     image_rgb_real: batch_rgb
                 }
-                image_rgb_fake_out, loss, _ = sess.run([image_rgb_fake, loss_func, optim_func],
-                                                        feed_dict=feed_dict)
+                out_list = [image_rgb_fake, loss_func, optim_func, summary_op]
+                image_rgb_fake_out, loss, _ , summary = sess.run(out_list, feed_dict=feed_dict)
+
+                # Report to tensorboard all the summaries at the current timestep
+                writer.add_summary(summary, epoch*image_generator.num_batches + batch_num)
 
                 print('Epoch {}, batch number: {}, loss: {}'.format(epoch, batch_num, loss))
 
