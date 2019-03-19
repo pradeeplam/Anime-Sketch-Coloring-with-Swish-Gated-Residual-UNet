@@ -30,7 +30,7 @@ class ImageGenerator(object):
             path_bw_full = os.path.join(image_bw_dir, path_bw) 
 
             # Construct complete path to rgb image
-            path_rgb = path_bw.replace('images_bw', 'images_bw')
+            path_rgb = path_bw.replace('images_bw', 'images_rgb')
             path_rgb_full = os.path.join(image_rgb_dir, path_rgb)
 
             # Validate if colorized image exists
@@ -43,7 +43,7 @@ class ImageGenerator(object):
         return rgb_paths, bw_paths
 
 
-    def load_image(self, img_path, read_mode=cv2.IMREAD_GRAYSCALE):
+    def load_image(self, img_path, read_mode):
         img = cv2.imread(img_path.decode(), read_mode).astype(np.float32)
         img /= 255.0
         img = cv2.resize(img, (128, 128))
@@ -51,13 +51,13 @@ class ImageGenerator(object):
 
 
     def load_image_pairs(self, bw_img, rgb_img):
-        return (self.load_image(bw_img),
+        return (self.load_image(bw_img, cv2.IMREAD_GRAYSCALE),
                 self.load_image(rgb_img, cv2.IMREAD_COLOR))
 
 
     def load_batches(self):
 
-        dataset = tf.data.Dataset.from_tensor_slices((self.rgb_paths, self.bw_paths))
+        dataset = tf.data.Dataset.from_tensor_slices((self.bw_paths, self.rgb_paths))
 
         # Repeat indefinitely
         dataset = dataset.repeat()

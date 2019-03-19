@@ -57,7 +57,11 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real, batch_size):
             # Resize image
             mask = tf.image.resize_images(image_bw, tf.shape(act_fake)[1:3])
 
-            loss_inner = weight * tf.norm(tf.multiply(mask, act_fake-act_real), 1)
+            loss_inner = tf.multiply(mask, act_fake-act_real)
+            loss_inner = tf.norm(loss_inner, ord=1, axis=[1, 2])
+            loss_inner = tf.reduce_sum(loss_inner)
+            loss_inner = weight * loss_inner
+
             loss = loss + loss_inner
 
         losses.append(loss)
@@ -67,18 +71,20 @@ def build_loss_func(image_bw, images_rgb_fake, image_rgb_real, batch_size):
     return loss
 
 
-def save_images(output_dir, image_rgb_fake, iteration):
+def save_images(output_fname, batch_rgb_fake, batch_rgb_real, batch_bw):
     """Tile images"""
-    batches = (image_rgb_fake * 255).astype(np.uint8)
+    batch_fake = (batch_rgb_fake * 255).astype(np.uint8)
+    batch_real = (batch_rgb_real * 255).astype(np.uint8)
+    batch_bw = (batch_bw * 255).astype(np.uint8)
 
     row_images = []
-    for batch in batches:
-        row = [batch[:, :, i*3:(i+1)*3] for i in range(9)]
+    for image_bw, image_rgb_real, collection_fake in zip(batch_bw, batch_real, batch_fake):
+        row = [cv2.cvtColor(image_bw, cv2.COLOR_GRAY2BGR), image_rgb_real]
+        row += [collection_fake[:, :, i*3:(i+1)*3] for i in range(9)]
         row_image = np.hstack(row)
         row_images.append(row_image)
     out_image = np.vstack(row_images)
 
-    output_fname = os.path.join(output_dir, '{}.jpg'.format(iteration))
     cv2.imwrite(output_fname, out_image)
 
 
@@ -134,7 +140,8 @@ def train(loss_func, optim_func, image_bw, image_rgb_fake, image_rgb_real, args)
                 losses.append(loss)
 
                 if batch_num % args.save_every == 0:
-                    save_images(args.output_dir, image_rgb_fake_out, batch_num)
+                    output_fname = os.path.join(args.output_dir, '{}_{}.jpg'.format(epoch, batch_num))
+                    save_images(output_fname, image_rgb_fake_out, batch_rgb, batch_bw)
                     saver.save(sess, args.model_ckpt)
 
 

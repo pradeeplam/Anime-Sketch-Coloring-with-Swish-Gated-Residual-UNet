@@ -27,7 +27,7 @@ def Conv2DTransposeLReLU(*args, **kwargs):
 
 def variable_summaries(var):
     """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
-    with tf.name_scope("VAR_"+var.name.replace(':','_')):
+    with tf.name_scope('VAR_'+var.name.replace(':','_')):
         mean = tf.reduce_mean(var)
         tf.summary.scalar('mean', mean)
         with tf.name_scope('stddev'):
