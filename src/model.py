@@ -25,6 +25,13 @@ def Conv2DLReLU(*args, **kwargs):
 def Conv2DTransposeLReLU(*args, **kwargs):
     return Conv2DLReLUBase(conv_func=tf.layers.conv2d_transpose, *args, **kwargs)
 
+def SwishMod(inputs, filters):
+    conv = tf.layers.Conv2D(filters=filters, kernel_size=3, activation=None,
+                    padding='same', kernel_initializer='he_normal')(inputs)
+    swished = tf.mul(inputs,tf.math.sigmoid(conv)) 
+
+    return swished
+
 def variable_summaries(var):
     """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
     with tf.name_scope('VAR_'+var.name.replace(':','_')):
@@ -49,11 +56,11 @@ class SGRU(object):
             inputs, conv4 = self._swish_gated_block('SGB_4', inputs, 384)
             inputs, conv5 = self._swish_gated_block('SGB_5', inputs, 480)
 
-            swish1 = tf.nn.swish(conv1)
-            swish2 = tf.nn.swish(conv2)
-            swish3 = tf.nn.swish(conv3)
-            swish4 = tf.nn.swish(conv4)
-            swish5 = tf.nn.swish(conv5)
+            swish1 = SwishMod(conv1, 96)
+            swish2 = SwishMod(conv2, 192)
+            swish3 = SwishMod(conv3, 288)
+            swish4 = SwishMod(conv4, 384)
+            swish5 = SwishMod(conv5, 480)
 
             inputs, _ = self._swish_gated_block('SGB_5_up', inputs, 512, cat=swish5)
             inputs, _ = self._swish_gated_block('SGB_4_up', inputs, 480, cat=swish4)
@@ -93,12 +100,12 @@ class SGRU(object):
 
             if cat is None:
                 sgb_op = tf.layers.MaxPooling2D(pool_size=2, strides=2)(conv2)
-                swish = tf.nn.swish(inputs)
+                swish = SwishMod(inputs, filters)
                 swish = tf.layers.MaxPooling2D(pool_size=2, strides=2)(swish)
                 concat = [sgb_op, swish]
             else:
                 sgb_op = Conv2DTransposeLReLU(filters=filters, strides=2, inputs=conv2)
-                swish = tf.nn.swish(inputs)
+                swish = SwishMod(inputs, filters)
                 swish = Conv2DTransposeLReLU(filters=filters, strides=2, inputs=swish)
                 concat = [sgb_op, swish, cat]
 
