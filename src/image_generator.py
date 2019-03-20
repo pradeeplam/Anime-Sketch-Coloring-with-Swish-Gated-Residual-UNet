@@ -46,7 +46,6 @@ class ImageGenerator(object):
     def load_image(self, img_path, read_mode):
         img = cv2.imread(img_path.decode(), read_mode).astype(np.float32)
         img /= 255.0
-        img = cv2.resize(img, (128, 128))
         return img[:, :, np.newaxis] if read_mode == cv2.IMREAD_GRAYSCALE else img
 
 

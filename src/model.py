@@ -5,30 +5,32 @@ Builds the UNet model model as described in paper:
 import tensorflow as tf
 
 
-def Conv2DLReLUBase(conv_func, inputs, filters, kernel_size=2, strides=1, padding='same',
-                    kernel_initializer='he_normal', alpha=0.03):
+def Conv2DLReLUBase(conv_func, inputs, filters, kernel_size=2, strides=1,
+                    padding='SAME', alpha=0.03):
     layer = conv_func(
         inputs,
-        filters=filters,
+        num_outputs=filters,
         kernel_size=kernel_size,
-        strides=strides,
-        padding=padding,
-        kernel_initializer=kernel_initializer)
+        stride=strides,
+        normalizer_fn=tf.contrib.layers.layer_norm,
+        activation_fn=None,
+        padding=padding)
     layer = tf.nn.leaky_relu(layer, alpha=alpha)
     return layer
 
 
 def Conv2DLReLU(*args, **kwargs):
-    return Conv2DLReLUBase(conv_func=tf.layers.conv2d, *args, **kwargs)
+    return Conv2DLReLUBase(conv_func=tf.contrib.layers.conv2d, *args, **kwargs)
 
 
 def Conv2DTransposeLReLU(*args, **kwargs):
-    return Conv2DLReLUBase(conv_func=tf.layers.conv2d_transpose, *args, **kwargs)
+    return Conv2DLReLUBase(conv_func=tf.contrib.layers.conv2d_transpose, *args, **kwargs)
 
 
 def SwishMod(inputs, filters):
-    conv = tf.layers.Conv2D(filters=filters, kernel_size=3, activation=None,
-                            padding='same', kernel_initializer='he_normal')(inputs)
+    conv = tf.contrib.layers.conv2d(inputs, num_outputs=filters, kernel_size=3,
+                                    normalizer_fn=tf.contrib.layers.layer_norm,
+                                    activation_fn=None, padding='SAME')
     swished = tf.multiply(inputs, tf.sigmoid(conv))
     return swished
 
@@ -75,7 +77,7 @@ class SGRU(object):
             conv1_2_up = Conv2DLReLU(filters=96, kernel_size=3, inputs=conv1_1_up)
             conv1_3_up = Conv2DLReLU(filters=96, kernel_size=3, inputs=conv1_2_up)
             conv1_4_up = tf.layers.Conv2D(filters=27, kernel_size=1, activation=None,
-                    padding='same', kernel_initializer='he_normal')(conv1_3_up)
+                                          padding='same')(conv1_3_up)
 
             self.output = conv1_4_up
 
