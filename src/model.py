@@ -83,8 +83,11 @@ class SGRU(object):
 
         self.params = tf.trainable_variables(scope='SGRU_MODEL')
         with tf.name_scope('summaries'):
+            for i in range(int(self.output.get_shape().as_list()[-1]/3)):
+                tf.summary.image(f"Image_{i}", self.output[:,:,:,i*3;(i+1)*3])
             for var in self.params:
                 variable_summaries(var)
+
         self.saver = tf.saver = tf.train.Saver(self.params, max_to_keep=5)
 
 
