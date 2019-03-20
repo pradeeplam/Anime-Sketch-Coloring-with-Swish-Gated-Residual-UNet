@@ -60,17 +60,32 @@ def build_loss_func(sgru_model, image_rgb_real, batch_size):
 
             # Resize image
             mask = tf.image.resize_images(image_bw, tf.shape(act_fake)[1:3])
+            # mask.shape = [batch, rows, cols, 1]
 
-            loss_inner = tf.multiply(mask, act_fake-act_real)
-            loss_inner = tf.norm(loss_inner, ord=1, axis=[1, 2])
-            loss_inner = tf.reduce_sum(loss_inner)
+            loss_inner = tf.abs(act_fake - act_real)
+            # loss_inner.shape = [batch, rows, cols, 3]
+
+            loss_inner = tf.reduce_mean(loss_inner, reduction_indices=[3])
+            # loss_inner.shape = [batch, rows, cols]
+
+            loss_inner = tf.expand_dims(loss_inner, -1)
+            # loss_inner.shape = [batch, rows, cols, 1]
+
+            loss_inner = mask * loss_inner
+            # loss_inner.shape = [batch, rows, cols, 1]
+
+            loss_inner = tf.reduce_mean(loss_inner)
+            # loss_inner.shape = 1
+
             loss_inner = weight * loss_inner
 
             loss = loss + loss_inner
 
         losses.append(loss)
 
-    loss = tf.reduce_min(losses)
+    loss_min = tf.reduce_min(losses)
+    loss_mean = tf.reduce_mean(losses)
+    loss = loss_min * 0.999 + loss_mean * 0.001
     tf.summary.scalar('Loss', loss)
     return loss
 
@@ -96,7 +111,7 @@ def train(sgru_model, loss_func, optim_func, image_rgb_real, args):
 
     # join the log directory with the experiment name
     output_dir = os.path.join(args.output_dir, args.name)
-    vgg_ckpt = os.path.join(args.data_dir, "vgg_19.ckpt")
+    vgg_ckpt = os.path.join(args.data_dir, 'vgg_19.ckpt')
 
     # Load VGG variables
     variables_to_restore = tf.contrib.framework.get_variables_to_restore()
@@ -158,10 +173,6 @@ def main(args):
                  'http://download.tensorflow.org/models/vgg_19_2016_08_28.tar.gz ' +
                  'and save it to the root of your data_dir')
 
-    # If an experiment name isn't provided, we set it to a timestamp
-    if not args.name:
-        args.name = datetime.now().strftime("sgru-%Y-%m-%d-%H-%M-%S-%f")
-
     image_rgb_real = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='img_real')
     model = SGRU()
 
@@ -169,6 +180,10 @@ def main(args):
     optimizer_func = tf.train.AdamOptimizer(learning_rate=0.00005).minimize(loss_func)
 
     train(model, loss_func, optimizer_func, image_rgb_real, args)
+
+
+def timestamp():
+    return datetime.now().strftime('sgru-%Y-%m-%d-%H-%M-%S-%f')
 
 
 def get_args():
@@ -180,7 +195,8 @@ def get_args():
     parser.add_argument('--resume', action='store_true', help='Resume training models')
     parser.add_argument('--save-every', type=int, default=1, help='Save image every n iterations')
     parser.add_argument('--num-cpus', type=int, default=4, help='Num CPUs to load images with')
-    parser.add_argument('--name', type=str, default=None, help='Name of the experiment (defaults to timestamp)')
+    parser.add_argument('--name', type=str, default=timestamp(),
+                        help='Name of the experiment (defaults to timestamp)')
     return parser.parse_args()
 
 
