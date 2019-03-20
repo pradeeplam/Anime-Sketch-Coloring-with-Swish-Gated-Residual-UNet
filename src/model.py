@@ -51,8 +51,10 @@ def variable_summaries(var):
 class SGRU(object):
 
 
-    def __init__(self, inputs):
-        self.inputs = inputs
+    def __init__(self):
+
+        self.image_bw = tf.placeholder(tf.float32, shape=[None,None,None,1], name='img_bw')
+        inputs = self.image_bw
 
         with tf.variable_scope('SGRU_MODEL'):
             inputs, conv1 = self._swish_gated_block('SGB_1', inputs, 96, conv1x1=False)
@@ -79,16 +81,19 @@ class SGRU(object):
             conv1_4_up = tf.layers.Conv2D(filters=27, kernel_size=1, activation=None,
                                           padding='same')(conv1_3_up)
 
-            self.output = conv1_4_up
+            self.images_rgb_fake = conv1_4_up
 
         self.params = tf.trainable_variables(scope='SGRU_MODEL')
+        self.saver = tf.saver = tf.train.Saver(self.params, max_to_keep=5)
+
         with tf.name_scope('summaries'):
-            for i in range(int(self.output.get_shape().as_list()[-1]/3)):
-                tf.summary.image(f"Image_{i}", self.output[:,:,:,i*3;(i+1)*3])
+            img_count = int(self.output.get_shape().as_list()[-1]/3)
+            # Add each image
+            for i in range(img_count):
+                tf.summary.image(f"Image_{i}", self.images_rgb_fake[:,:,:,i*3;(i+1)*3])
+            # generate histograms for each variable in our model
             for var in self.params:
                 variable_summaries(var)
-
-        self.saver = tf.saver = tf.train.Saver(self.params, max_to_keep=5)
 
 
     def _swish_gated_block(self, name, inputs, filters, cat=None, conv1x1=True):
