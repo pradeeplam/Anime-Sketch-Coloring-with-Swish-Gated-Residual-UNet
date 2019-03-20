@@ -25,12 +25,13 @@ def Conv2DLReLU(*args, **kwargs):
 def Conv2DTransposeLReLU(*args, **kwargs):
     return Conv2DLReLUBase(conv_func=tf.layers.conv2d_transpose, *args, **kwargs)
 
+
 def SwishMod(inputs, filters):
     conv = tf.layers.Conv2D(filters=filters, kernel_size=3, activation=None,
-                    padding='same', kernel_initializer='he_normal')(inputs)
-    swished = tf.mul(inputs,tf.math.sigmoid(conv)) 
-
+                            padding='same', kernel_initializer='he_normal')(inputs)
+    swished = tf.multiply(inputs, tf.sigmoid(conv))
     return swished
+
 
 def variable_summaries(var):
     """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
@@ -44,7 +45,9 @@ def variable_summaries(var):
         tf.summary.scalar('min', tf.reduce_min(var))
         tf.summary.histogram('histogram', var)
 
+
 class SGRU(object):
+
 
     def __init__(self, inputs):
         self.inputs = inputs
@@ -82,6 +85,7 @@ class SGRU(object):
                 variable_summaries(var)
         self.saver = tf.saver = tf.train.Saver(self.params, max_to_keep=5)
 
+
     def _swish_gated_block(self, name, inputs, filters, cat=None, conv1x1=True):
         """swish_gated block takes in a input tensor and returns two objects, one of
         which is the concat operation found in the SGB, and the other is the
@@ -111,9 +115,11 @@ class SGRU(object):
 
             return tf.concat(concat, axis=3), conv2
 
+
     def save(self, path):
         """need to figure out whether path variable needs .ckpt in the name"""
         self.saver.save(tf.get_default_session(), path)
+
 
     def load(self, path):
         self.saver.restore(tf.get_default_session(), path)
