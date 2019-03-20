@@ -27,12 +27,13 @@ def Conv2DTransposeLReLU(*args, **kwargs):
     return Conv2DLReLUBase(conv_func=tf.contrib.layers.conv2d_transpose, *args, **kwargs)
 
 
-def SwishMod(inputs):
-    filters = inputs.get_shape().as_list()[-1]
-    conv = tf.contrib.layers.conv2d(inputs, num_outputs=filters, kernel_size=3,
+def SwishMod(inputs, name='SWISH'):
+    with tf.variable_scope(name):
+        filters = inputs.get_shape().as_list()[-1]
+        conv = tf.contrib.layers.conv2d(inputs, num_outputs=filters, kernel_size=3,
                                     normalizer_fn=tf.contrib.layers.layer_norm,
                                     activation_fn=None, padding='SAME')
-    swished = tf.multiply(inputs, tf.sigmoid(conv))
+        swished = tf.multiply(inputs, tf.sigmoid(conv))
     return swished
 
 
@@ -64,11 +65,11 @@ class SGRU(object):
             inputs, conv4 = self._swish_gated_block('SGB_4', inputs, 384)
             inputs, conv5 = self._swish_gated_block('SGB_5', inputs, 480)
 
-            swish1 = SwishMod(conv1)
-            swish2 = SwishMod(conv2)
-            swish3 = SwishMod(conv3)
-            swish4 = SwishMod(conv4)
-            swish5 = SwishMod(conv5)
+            swish1 = SwishMod(conv1, 'SWISH_1')
+            swish2 = SwishMod(conv2, 'SWISH_2')
+            swish3 = SwishMod(conv3, 'SWISH_3')
+            swish4 = SwishMod(conv4, 'SWISH_4')
+            swish5 = SwishMod(conv5, 'SWISH_5')
 
             inputs, _ = self._swish_gated_block('SGB_5_up', inputs, 512, cat=swish5)
             inputs, _ = self._swish_gated_block('SGB_4_up', inputs, 480, cat=swish4)
