@@ -27,7 +27,8 @@ def Conv2DTransposeLReLU(*args, **kwargs):
     return Conv2DLReLUBase(conv_func=tf.contrib.layers.conv2d_transpose, *args, **kwargs)
 
 
-def SwishMod(inputs, filters):
+def SwishMod(inputs):
+    filters = inputs.get_shape().as_list()[-1]
     conv = tf.contrib.layers.conv2d(inputs, num_outputs=filters, kernel_size=3,
                                     normalizer_fn=tf.contrib.layers.layer_norm,
                                     activation_fn=None, padding='SAME')
@@ -63,11 +64,11 @@ class SGRU(object):
             inputs, conv4 = self._swish_gated_block('SGB_4', inputs, 384)
             inputs, conv5 = self._swish_gated_block('SGB_5', inputs, 480)
 
-            swish1 = SwishMod(conv1, 96)
-            swish2 = SwishMod(conv2, 192)
-            swish3 = SwishMod(conv3, 288)
-            swish4 = SwishMod(conv4, 384)
-            swish5 = SwishMod(conv5, 480)
+            swish1 = SwishMod(conv1)
+            swish2 = SwishMod(conv2)
+            swish3 = SwishMod(conv3)
+            swish4 = SwishMod(conv4)
+            swish5 = SwishMod(conv5)
 
             inputs, _ = self._swish_gated_block('SGB_5_up', inputs, 512, cat=swish5)
             inputs, _ = self._swish_gated_block('SGB_4_up', inputs, 480, cat=swish4)
@@ -87,10 +88,10 @@ class SGRU(object):
         self.saver = tf.saver = tf.train.Saver(self.params, max_to_keep=5)
 
         with tf.name_scope('summaries'):
-            img_count = int(self.output.get_shape().as_list()[-1]/3)
+            img_count = int(self.images_rgb_fake.get_shape().as_list()[-1]/3)
             # Add each image
             for i in range(img_count):
-                tf.summary.image(f"Image_{i}", self.images_rgb_fake[:,:,:,i*3;(i+1)*3])
+                tf.summary.image(f"Image_{i}", self.images_rgb_fake[:,:,:,i*3:(i+1)*3])
             # generate histograms for each variable in our model
             for var in self.params:
                 variable_summaries(var)
@@ -114,12 +115,12 @@ class SGRU(object):
 
             if cat is None:
                 sgb_op = tf.layers.MaxPooling2D(pool_size=2, strides=2)(conv2)
-                swish = SwishMod(inputs, filters)
+                swish = SwishMod(inputs)
                 swish = tf.layers.MaxPooling2D(pool_size=2, strides=2)(swish)
                 concat = [sgb_op, swish]
             else:
                 sgb_op = Conv2DTransposeLReLU(filters=filters, strides=2, inputs=conv2)
-                swish = SwishMod(inputs, filters)
+                swish = SwishMod(inputs)
                 swish = Conv2DTransposeLReLU(filters=filters, strides=2, inputs=swish)
                 concat = [sgb_op, swish, cat]
 
