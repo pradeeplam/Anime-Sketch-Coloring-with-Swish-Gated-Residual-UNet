@@ -6,7 +6,12 @@ Using Deep Learning to colorize manga based on paper with same name
 Setup
 -----
 
-(Talk about prerequisites here)
+Use the `requirements.txt` file to install the necessary depedencies for this
+project.
+
+```
+$ pip install -r requirements.txt
+```
 
 Before proceeding, make sure the data folder has the following structure.
 ```
