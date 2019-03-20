@@ -96,10 +96,11 @@ def train(sgru_model, loss_func, optim_func, image_rgb_real, args):
 
     # join the log directory with the experiment name
     output_dir = os.path.join(args.output_dir, args.name)
+    vgg_ckpt = os.path.join(args.data_dir, "vgg_19.ckpt")
 
     # Load VGG variables
     variables_to_restore = tf.contrib.framework.get_variables_to_restore()
-    vgg_init_fn = tf.contrib.framework.assign_from_checkpoint_fn(args.vgg_ckpt,
+    vgg_init_fn = tf.contrib.framework.assign_from_checkpoint_fn(vgg_ckpt,
                                                                  variables_to_restore,
                                                                  ignore_missing_vars=True)
 
