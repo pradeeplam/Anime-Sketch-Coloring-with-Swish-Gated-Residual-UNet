@@ -19,7 +19,19 @@ def vgg_19_evaluate(image):
     return end_points
 
 
-def build_loss_func(sgru_model, image_rgb_real, batch_size):
+def reshape_images_rgb(images_rgb_fake, collection_size):
+    """Go from [1, rows, cols, 27] -> [9, rows, cols, 3]
+    This definitely sucks as it prevents us from doing batch size > 1.
+    Find a better way to do this.
+    """
+    images = []
+    for i in range(collection_size):
+        images.append(images_rgb_fake[:, :, :, i*3:(i+1)*3])
+    images_rgb_fake = tf.concat(images, axis=0)
+    return images_rgb_fake
+
+
+def build_loss_func(sgru_model, image_rgb_real):
 
     image_bw = sgru_model.image_bw
     images_rgb_fake = sgru_model.images_rgb_fake
@@ -37,54 +49,48 @@ def build_loss_func(sgru_model, image_rgb_real, batch_size):
         'vgg_19/conv5/conv5_2',
     ]
 
-    losses = []
-
     # Iterate through Unet output collection
     collection_size = 9
-    for i in range(collection_size):
 
-        loss = tf.Variable(0.0)
+    images_rgb_fake = reshape_images_rgb(images_rgb_fake, collection_size)
 
-        image_rgb_fake = images_rgb_fake[:, :, :, i*3:(i+1)*3]
+    losses = []
 
-        end_points_fake = vgg_19_evaluate(image_rgb_fake)
+    end_points_fake = vgg_19_evaluate(images_rgb_fake)
 
-        for weight, layer in zip(lambda_weights, layers):
+    for weight, layer in zip(lambda_weights, layers):
 
-            if layer == 'input':
-                act_fake = image_rgb_fake
-                act_real = image_rgb_real
-            else:
-                act_fake = end_points_fake[layer]
-                act_real = end_points_real[layer]
+        if layer == 'input':
+            act_fake = images_rgb_fake
+            act_real = image_rgb_real
+        else:
+            act_fake = end_points_fake[layer]
+            act_real = end_points_real[layer]
 
-            # Resize image
-            mask = tf.image.resize_images(image_bw, tf.shape(act_fake)[1:3])
-            # mask.shape = [batch, rows, cols, 1]
+        mask = tf.image.resize_images(image_bw, tf.shape(act_fake)[1:3])
 
-            loss_inner = tf.abs(act_fake - act_real)
-            # loss_inner.shape = [batch, rows, cols, 3]
+        loss_inner = tf.abs(act_fake - act_real)
+        # loss_inner.shape = [9, rows, cols, chans]
 
-            loss_inner = tf.reduce_mean(loss_inner, reduction_indices=[3])
-            # loss_inner.shape = [batch, rows, cols]
+        loss_inner = tf.reduce_mean(loss_inner, reduction_indices=[3])
+        # loss_inner.shape = [9, rows, cols]
 
-            loss_inner = tf.expand_dims(loss_inner, -1)
-            # loss_inner.shape = [batch, rows, cols, 1]
+        loss_inner = tf.expand_dims(loss_inner, -1)
+        # loss_inner.shape = [9, rows, cols, 1]
 
-            loss_inner = mask * loss_inner
-            # loss_inner.shape = [batch, rows, cols, 1]
+        loss_inner = mask * loss_inner
+        # loss_inner.shape = [9, rows, cols, 1]
 
-            loss_inner = tf.reduce_mean(loss_inner)
-            # loss_inner.shape = 1
+        loss_inner = tf.reduce_mean(loss_inner, reduction_indices=[1, 2])
+        # loss_inner.shape = [9, 1]
 
-            loss_inner = weight * loss_inner
+        loss_inner = weight * loss_inner
 
-            loss = loss + loss_inner
+        losses.append(loss_inner)
 
-        losses.append(loss)
-
-    loss_min = tf.reduce_min(losses)
-    loss_mean = tf.reduce_mean(losses)
+    loss_sum = tf.reduce_sum(losses, axis=0)
+    loss_min = tf.reduce_min(loss_sum)
+    loss_mean = tf.reduce_mean(loss_sum)
     loss = loss_min * 0.999 + loss_mean * 0.001
     tf.summary.scalar('Loss', loss)
     return loss
@@ -95,6 +101,9 @@ def save_images(output_fname, batch_rgb_fake, batch_rgb_real, batch_bw):
     batch_fake = (batch_rgb_fake * 255).astype(np.uint8)
     batch_real = (batch_rgb_real * 255).astype(np.uint8)
     batch_bw = (batch_bw * 255).astype(np.uint8)
+
+    # Remove clipping
+    batch_fake = np.minimum(np.maximum(batch_fake, 0.0), 255.0)
 
     row_images = []
     for image_bw, image_rgb_real, collection_fake in zip(batch_bw, batch_real, batch_fake):
@@ -109,7 +118,7 @@ def save_images(output_fname, batch_rgb_fake, batch_rgb_real, batch_bw):
 
 def train(sgru_model, loss_func, optim_func, image_rgb_real, args):
 
-    # join the log directory with the experiment name
+    # Join the log directory with the experiment name
     output_dir = os.path.join(args.output_dir, args.name)
     vgg_ckpt = os.path.join(args.data_dir, 'vgg_19.ckpt')
 
@@ -136,7 +145,7 @@ def train(sgru_model, loss_func, optim_func, image_rgb_real, args):
         losses = []
 
         image_dir = os.path.join(args.data_dir, 'images')
-        image_generator = ImageGenerator(image_dir, args.batch_size, args.num_cpus)
+        image_generator = ImageGenerator(image_dir, args.num_cpus)
 
         batch_bw_op, batch_rgb_op = image_generator.load_batches()
 
@@ -161,8 +170,11 @@ def train(sgru_model, loss_func, optim_func, image_rgb_real, args):
                 losses.append(loss)
 
                 if batch_num % args.save_every == 0:
-                    output_fname = os.path.join(output_dir, 'images/{}_{}.jpg'.format(epoch, batch_num))
-                    save_images(output_fname, images_rgb_fake_out, batch_rgb, batch_bw)
+                    image_dir = os.path.join(output_dir, 'images')
+                    if not os.path.isdir(image_dir):
+                        os.mkdir(image_dir)
+                    image_fname = os.path.join(image_dir, '{}_{}.jpg'.format(epoch, batch_num))
+                    save_images(image_fname, images_rgb_fake_out, batch_rgb, batch_bw)
                     sgru_model.save(os.path.join(output_dir, 'model.ckpt'))
 
 
@@ -176,7 +188,7 @@ def main(args):
     image_rgb_real = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='img_real')
     model = SGRU()
 
-    loss_func = build_loss_func(model, image_rgb_real, args.batch_size)
+    loss_func = build_loss_func(model, image_rgb_real)
     optimizer_func = tf.train.AdamOptimizer(learning_rate=0.00005).minimize(loss_func)
 
     train(model, loss_func, optimizer_func, image_rgb_real, args)
@@ -191,7 +203,6 @@ def get_args():
     parser.add_argument('data_dir', help='Directory containing image subdirs')
     parser.add_argument('output_dir', help='Output directory')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
-    parser.add_argument('--batch-size', type=int, default=4, help='Batch size')
     parser.add_argument('--resume', action='store_true', help='Resume training models')
     parser.add_argument('--save-every', type=int, default=1, help='Save image every n iterations')
     parser.add_argument('--num-cpus', type=int, default=4, help='Num CPUs to load images with')

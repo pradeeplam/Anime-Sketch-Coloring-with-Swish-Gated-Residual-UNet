@@ -55,7 +55,7 @@ class SGRU(object):
 
     def __init__(self):
 
-        self.image_bw = tf.placeholder(tf.float32, shape=[None,None,None,1], name='img_bw')
+        self.image_bw = tf.placeholder(tf.float32, shape=[None,224,224,1], name='img_bw')
         inputs = self.image_bw
 
         with tf.variable_scope('SGRU_MODEL'):
