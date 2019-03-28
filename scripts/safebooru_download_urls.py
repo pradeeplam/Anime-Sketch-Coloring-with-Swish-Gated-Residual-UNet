@@ -24,9 +24,9 @@ def download(urls_out):
 
 
 def get_urls(csv_fname):
-    urls = ''
+    urls = []
     first = True
-    for line in open(CSV_FNAME, 'r').readlines():
+    for line in open(csv_fname, 'r').readlines():
         # Skip header line without loading everything into memory
         if first:
             first = False
@@ -37,8 +37,8 @@ def get_urls(csv_fname):
 
 
 def main(args):
-    with Pool(5) as pool:
-        urls = list(open(args.csv_fname, 'r').readlines())
+    with Pool(4) as pool:
+        urls = get_urls(args.csv_fname)
         # Ugly hack to pass multiple parameters to download()
         urls_out = [(url, args.out_dirname) for url in urls]
         pool.map(download, urls_out)
