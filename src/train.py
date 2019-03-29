@@ -19,18 +19,6 @@ def vgg_19_evaluate(image):
     return end_points
 
 
-def reshape_images_rgb(images_rgb_fake, collection_size):
-    """Go from [1, rows, cols, 27] -> [9, rows, cols, 3]
-    This definitely sucks as it prevents us from doing batch size > 1.
-    Find a better way to do this.
-    """
-    images = []
-    for i in range(collection_size):
-        images.append(images_rgb_fake[:, :, :, i*3:(i+1)*3])
-    images_rgb_fake = tf.concat(images, axis=0)
-    return images_rgb_fake
-
-
 def build_loss_func(sgru_model, image_rgb_real):
 
     image_bw = sgru_model.image_bw
@@ -49,48 +37,52 @@ def build_loss_func(sgru_model, image_rgb_real):
         'vgg_19/conv5/conv5_2',
     ]
 
-    # Iterate through Unet output collection
+    losses = []
     collection_size = 9
 
-    images_rgb_fake = reshape_images_rgb(images_rgb_fake, collection_size)
+    for i in range(collection_size):
 
-    losses = []
+        losses_collection = []
 
-    end_points_fake = vgg_19_evaluate(images_rgb_fake)
+        image_rgb_fake = images_rgb_fake[:, :, :, i*3:(i+1)*3]
+        end_points_fake = vgg_19_evaluate(image_rgb_fake)
 
-    for weight, layer in zip(lambda_weights, layers):
+        for weight, layer in zip(lambda_weights, layers):
 
-        if layer == 'input':
-            act_fake = images_rgb_fake
-            act_real = image_rgb_real
-        else:
-            act_fake = end_points_fake[layer]
-            act_real = end_points_real[layer]
+            if layer == 'input':
+                act_fake = image_rgb_fake
+                act_real = image_rgb_real
+            else:
+                act_fake = end_points_fake[layer]
+                act_real = end_points_real[layer]
 
-        mask = tf.image.resize_images(image_bw, tf.shape(act_fake)[1:3])
+            mask = tf.image.resize_images(image_bw, tf.shape(act_fake)[1:3])
+            # mask.shape = [batch, rows, cols, 1]
 
-        loss_inner = tf.abs(act_fake - act_real)
-        # loss_inner.shape = [9, rows, cols, chans]
+            loss_inner = tf.abs(act_fake - act_real)
+            # loss_inner.shape = [batch, rows, cols, chans] 
 
-        loss_inner = tf.reduce_mean(loss_inner, reduction_indices=[3])
-        # loss_inner.shape = [9, rows, cols]
+            loss_inner = tf.reduce_mean(loss_inner, reduction_indices=[3])
+            # loss_inner.shape = [batch, rows, cols]
 
-        loss_inner = tf.expand_dims(loss_inner, -1)
-        # loss_inner.shape = [9, rows, cols, 1]
+            loss_inner = tf.expand_dims(loss_inner, -1)
+            # loss_inner.shape = [batch, rows, cols, 1]
 
-        loss_inner = mask * loss_inner
-        # loss_inner.shape = [9, rows, cols, 1]
+            loss_inner = mask * loss_inner
+            # loss_inner.shape = [batch, rows, cols, 1]
 
-        loss_inner = tf.reduce_mean(loss_inner, reduction_indices=[1, 2])
-        # loss_inner.shape = [9, 1]
+            loss_inner = tf.reduce_mean(loss_inner)
+            # loss_inner.shape = 1
 
-        loss_inner = weight * loss_inner
+            loss_inner = weight * loss_inner
 
-        losses.append(loss_inner)
+            losses_collection.append(loss_inner)
 
-    loss_sum = tf.reduce_sum(losses, axis=0)
-    loss_min = tf.reduce_min(loss_sum)
-    loss_mean = tf.reduce_mean(loss_sum)
+        loss_collection = tf.reduce_sum(losses_collection)
+        losses.append(loss_collection)
+
+    loss_min = tf.reduce_min(losses)
+    loss_mean = tf.reduce_mean(losses)
     loss = loss_min * 0.999 + loss_mean * 0.001
     loss_summary = tf.summary.scalar('Loss', loss)
     return loss, loss_summary
@@ -148,7 +140,7 @@ def train(sgru_model, loss_func, optim_func, image_rgb_real, args, loss_summary)
         losses = []
 
         image_dir = os.path.join(args.data_dir, 'images')
-        image_generator = ImageGenerator(image_dir, args.num_cpus)
+        image_generator = ImageGenerator(image_dir, args.num_cpus, args.batch_size)
 
         batch_bw_op, batch_rgb_op = image_generator.load_batches()
 
@@ -205,9 +197,10 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_dir', help='Directory containing image subdirs')
     parser.add_argument('output_dir', help='Output directory')
+    parser.add_argument('--batch-size', type=int, default=1, help='Batch size')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--resume', action='store_true', help='Resume training models')
-    parser.add_argument('--save-every', type=int, default=1, help='Save image every n iterations')
+    parser.add_argument('--save-every', type=int, default=50, help='Save image every n iterations')
     parser.add_argument('--num-cpus', type=int, default=4, help='Num CPUs to load images with')
     parser.add_argument('--summarize',action='store_true',
                         help='Summarize vars and images for Tensorboard')
