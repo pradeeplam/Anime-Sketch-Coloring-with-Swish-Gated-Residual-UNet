@@ -3,8 +3,8 @@ import tensorflow as tf
 import cv2
 import numpy as np
 
-class ImageGenerator(object):
 
+class ImageGenerator(object):
 
     def __init__(self, image_dir, num_cpus, batch_size):
         self.rgb_paths, self.bw_paths = self.get_image_paths_train(image_dir)

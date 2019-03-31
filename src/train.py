@@ -14,6 +14,11 @@ from model import SGRU
 
 
 def vgg_19_evaluate(image):
+    """Normalization procedure:
+    https://github.com/tensorflow/models/issues/517#issuecomment-296427671
+    """
+    vgg_mean = np.array([103.939, 116.779, 123.68])
+    image_normalized = image * 255.0 - vgg_mean
     with tf.variable_scope('', reuse=tf.AUTO_REUSE):
         _, end_points = tf.contrib.slim.nets.vgg.vgg_19(image, is_training=False)
     return end_points
@@ -83,19 +88,20 @@ def build_loss_func(sgru_model, image_rgb_real):
 
     loss_min = tf.reduce_min(losses)
     loss_mean = tf.reduce_mean(losses)
-    loss = loss_min * 0.999 + loss_mean * 0.001
+    loss = loss_min * 0.996 + loss_mean * 0.004
     loss_summary = tf.summary.scalar('Loss', loss)
     return loss, loss_summary
 
 
 def save_images(output_fname, batch_rgb_fake, batch_rgb_real, batch_bw):
     """Tile images"""
+
+    # Remove clipping
+    batch_rgb_fake = np.minimum(np.maximum(batch_rgb_fake, 0.0), 1.0)
+
     batch_fake = (batch_rgb_fake * 255).astype(np.uint8)
     batch_real = (batch_rgb_real * 255).astype(np.uint8)
     batch_bw = (batch_bw * 255).astype(np.uint8)
-
-    # Remove clipping
-    batch_fake = np.minimum(np.maximum(batch_fake, 0.0), 255.0)
 
     row_images = []
     for image_bw, image_rgb_real, collection_fake in zip(batch_bw, batch_real, batch_fake):
@@ -184,7 +190,7 @@ def main(args):
     model = SGRU()
 
     loss_func, loss_summary = build_loss_func(model, image_rgb_real)
-    optimizer_func = tf.train.AdamOptimizer(learning_rate=0.00005).minimize(loss_func)
+    optimizer_func = tf.train.AdamOptimizer(learning_rate=0.0004).minimize(loss_func)
 
     train(model, loss_func, optimizer_func, image_rgb_real, args, loss_summary)
 

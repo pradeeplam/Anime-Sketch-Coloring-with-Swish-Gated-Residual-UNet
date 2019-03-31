@@ -5,8 +5,7 @@ Builds the UNet model model as described in paper:
 import tensorflow as tf
 
 
-def Conv2DLReLUBase(conv_func, inputs, filters, kernel_size=2, strides=1,
-                    padding='SAME', alpha=0.03):
+def Conv2DLReLUBase(conv_func, inputs, filters, kernel_size=2, strides=1, padding='SAME'):
     layer = conv_func(
         inputs,
         num_outputs=filters,
@@ -15,7 +14,7 @@ def Conv2DLReLUBase(conv_func, inputs, filters, kernel_size=2, strides=1,
         normalizer_fn=tf.contrib.layers.layer_norm,
         activation_fn=None,
         padding=padding)
-    layer = tf.nn.leaky_relu(layer, alpha=alpha)
+    layer = tf.nn.leaky_relu(layer)
     return layer
 
 
@@ -55,7 +54,7 @@ class SGRU(object):
 
     def __init__(self):
 
-        self.image_bw = tf.placeholder(tf.float32, shape=[None,224,224,1], name='img_bw')
+        self.image_bw = tf.placeholder(tf.float32, shape=[None,None,None,1], name='img_bw')
         inputs = self.image_bw
 
         with tf.variable_scope('SGRU_MODEL'):
@@ -88,6 +87,7 @@ class SGRU(object):
         self.params = tf.trainable_variables(scope='SGRU_MODEL')
         self.saver = tf.saver = tf.train.Saver(self.params, max_to_keep=5)
 
+        # Temporarily disable summaries to keep events size in check
         # with tf.name_scope('summaries'):
         #     img_count = int(self.images_rgb_fake.get_shape().as_list()[-1]/3)
         #     # Add each image
