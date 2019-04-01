@@ -52,7 +52,7 @@ def variable_summaries(var):
 class SGRU(object):
 
 
-    def __init__(self):
+    def __init__(self, summarize=False):
 
         self.image_bw = tf.placeholder(tf.float32, shape=[None,None,None,1], name='img_bw')
         inputs = self.image_bw
@@ -87,15 +87,15 @@ class SGRU(object):
         self.params = tf.trainable_variables(scope='SGRU_MODEL')
         self.saver = tf.saver = tf.train.Saver(self.params, max_to_keep=5)
 
-        # Temporarily disable summaries to keep events size in check
-        # with tf.name_scope('summaries'):
-        #     img_count = int(self.images_rgb_fake.get_shape().as_list()[-1]/3)
-        #     # Add each image
-        #     for i in range(img_count):
-        #         tf.summary.image('Image_{}'.format(i), self.images_rgb_fake[:,:,:,i*3:(i+1)*3])
-        #     # generate histograms for each variable in our model
-        #     for var in self.params:
-        #         variable_summaries(var)
+        if summarize:
+            with tf.name_scope('summaries'):
+                img_count = int(self.images_rgb_fake.get_shape().as_list()[-1]/3)
+                # Add each image
+                for i in range(img_count):
+                    tf.summary.image('Image_{}'.format(i), self.images_rgb_fake[:,:,:,i*3:(i+1)*3])
+                # generate histograms for each variable in our model
+                for var in self.params:
+                    variable_summaries(var)
 
 
     def _swish_gated_block(self, name, inputs, filters, cat=None, conv1x1=True):

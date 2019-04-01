@@ -187,7 +187,7 @@ def main(args):
                  'and save it to the root of your data_dir')
 
     image_rgb_real = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='img_real')
-    model = SGRU()
+    model = SGRU(summarize=args.summarize)
 
     loss_func, loss_summary = build_loss_func(model, image_rgb_real)
     optimizer_func = tf.train.AdamOptimizer(learning_rate=0.0004).minimize(loss_func)
