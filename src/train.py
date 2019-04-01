@@ -64,22 +64,11 @@ def build_loss_func(sgru_model, image_rgb_real):
             mask = tf.image.resize_images(image_bw, tf.shape(act_fake)[1:3])
             # mask.shape = [batch, rows, cols, 1]
 
-            loss_inner = tf.abs(act_fake - act_real)
-            # loss_inner.shape = [batch, rows, cols, chans] 
+            loss_inner = weight * mask * tf.abs(act_fake - act_real)
+            # loss_inner.shape = [batch, rows, cols, chans]
 
-            loss_inner = tf.reduce_mean(loss_inner, reduction_indices=[3])
-            # loss_inner.shape = [batch, rows, cols]
-
-            loss_inner = tf.expand_dims(loss_inner, -1)
-            # loss_inner.shape = [batch, rows, cols, 1]
-
-            loss_inner = mask * loss_inner
-            # loss_inner.shape = [batch, rows, cols, 1]
-
-            loss_inner = tf.reduce_mean(loss_inner)
+            loss_inner = tf.reduce_sum(loss_inner)
             # loss_inner.shape = 1
-
-            loss_inner = weight * loss_inner
 
             losses_collection.append(loss_inner)
 
@@ -88,7 +77,7 @@ def build_loss_func(sgru_model, image_rgb_real):
 
     loss_min = tf.reduce_min(losses)
     loss_mean = tf.reduce_mean(losses)
-    loss = loss_min * 0.996 + loss_mean * 0.004
+    loss = loss_min * 0.999 + loss_mean * 0.001
     loss_summary = tf.summary.scalar('Loss', loss)
     loss_summary = tf.summary.scalar('Loss Min', loss_min)
     loss_summary = tf.summary.scalar('Loss Mean', loss_mean)
