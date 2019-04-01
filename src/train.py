@@ -90,7 +90,9 @@ def build_loss_func(sgru_model, image_rgb_real):
     loss_mean = tf.reduce_mean(losses)
     loss = loss_min * 0.996 + loss_mean * 0.004
     loss_summary = tf.summary.scalar('Loss', loss)
-    return loss, loss_summary
+    loss_summary = tf.summary.scalar('Loss Min', loss_min)
+    loss_summary = tf.summary.scalar('Loss Mean', loss_mean)
+    return loss
 
 
 def save_images(output_fname, batch_rgb_fake, batch_rgb_real, batch_bw):
@@ -114,7 +116,7 @@ def save_images(output_fname, batch_rgb_fake, batch_rgb_real, batch_bw):
     cv2.imwrite(output_fname, out_image)
 
 
-def train(sgru_model, loss_func, optim_func, image_rgb_real, args, loss_summary):
+def train(sgru_model, loss_func, optim_func, image_rgb_real, args):
 
     # Join the log directory with the experiment name
     output_dir = os.path.join(args.output_dir, args.name)
@@ -132,10 +134,7 @@ def train(sgru_model, loss_func, optim_func, image_rgb_real, args, loss_summary)
     with tf.Session() as sess:
 
         # Summary operations for tensorboard
-        if args.summarize:
-            summary_op = tf.summary.merge_all()
-        else:
-            summary_op = loss_summary
+        summary_op = tf.summary.merge_all()
         writer = tf.summary.FileWriter(output_dir, graph=sess.graph)
 
         # Initialize all variables
@@ -189,10 +188,10 @@ def main(args):
     image_rgb_real = tf.placeholder(tf.float32, shape=[None, None, None, 3], name='img_real')
     model = SGRU(summarize=args.summarize)
 
-    loss_func, loss_summary = build_loss_func(model, image_rgb_real)
+    loss_func = build_loss_func(model, image_rgb_real)
     optimizer_func = tf.train.AdamOptimizer(learning_rate=0.0004).minimize(loss_func)
 
-    train(model, loss_func, optimizer_func, image_rgb_real, args, loss_summary)
+    train(model, loss_func, optimizer_func, image_rgb_real, args)
 
 
 def timestamp():
