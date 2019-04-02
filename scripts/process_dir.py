@@ -7,6 +7,9 @@ import argparse
 import os
 from fnmatch import fnmatch
 from multiprocessing import Pool
+from img_utils import *
+from keras.models import load_model
+import numpy as np
 
 import cv2
 
@@ -26,18 +29,34 @@ def get_all_fnames(dir_name):
 
 
 def process_image_sketch(fname):
-
     image_in = cv2.imread(fname)
     if image_in is None:
         return
 
-    image_out = cv2.edgePreservingFilter(image_in)
-    image_out, _ = cv2.pencilSketch(image_out, sigma_r=0.09, shade_factor=0.05)
-    cv2.imwrite(fname, image_out)
+    mod = load_model('mod.h5')
+    width = float(image_in.shape[1])
+    height = float(image_in.shape[0])
+
+    image_in = image_in.transpose((2, 0, 1))
+    light_map = np.zeros(image_in.shape, dtype=np.float)
+
+    for channel in range(3):
+        light_map[channel] = get_light_map(image_in[channel])
+
+    light_map = normalize_img(light_map)
+    light_map = add_rgb_channel(light_map)
+    edge_pred = mod.predict(light_map, batch_size=1)
+    edge_pred = edge_pred.transpose((3, 1, 2, 0))[0]
+    #color_sketch = get_color_sketch(edge_pred)
+    sketch = np.amax(edge_pred, 2)
+    #enhanced_sketch = get_enhanced_sketch(image_out)
+    #pured_sketch = get_pured_sketch(image_out)
+    sketch = get_sketch(sketch)
+    cv2.imwrite(fname, sketch)
 
 
-def process_image_resize(fname, new_size=(224, 224)):
 
+def process_image_resize(fname, new_size=(512, 512)):
     image_in = cv2.imread(fname)
     if image_in is None:
         return
@@ -46,7 +65,6 @@ def process_image_resize(fname, new_size=(224, 224)):
 
     if rows == new_size[0] and cols == new_size[1]:
         return
-
     if rows > cols:
         pad = (rows - cols) // 2
         if pad > 0:
@@ -55,9 +73,20 @@ def process_image_resize(fname, new_size=(224, 224)):
         pad = (cols - rows) // 2
         if pad > 0:
             image_in = image_in[:, pad:-pad, :]
-
     image_out = cv2.resize(image_in, new_size)
-    cv2.imwrite(fname, image_out)
+
+    #new resize
+    # if (cols > rows):
+    #     image_in = cv2.resize(image_in, (512, int(512 / cols * rows)), interpolation=cv2.INTER_AREA)
+    #     new_cols = new_size[1]
+    #     new_rows = int(new_width / cols * rows)
+    # else:
+    #     image_in = cv2.resize(image_in, (int(512 / rows * cols), 512), interpolation=cv2.INTER_AREA)
+    #     new_rows = new_size[0]
+    #     new_cols = int(new_rows / rows * cols)
+    # image_out = image_in[0:int(new_rows), 0:int(new_cols), :]
+    
+    cv2.imwrite(fname,image_out)
 
 
 def process_image_remove(fname):
