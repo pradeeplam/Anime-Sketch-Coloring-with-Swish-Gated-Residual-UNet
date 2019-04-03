@@ -120,7 +120,12 @@ def train(sgru_model, loss_func, optim_func, image_rgb_real, args):
     # Add an op to initialize the variables.
     init_op = tf.global_variables_initializer()
 
-    with tf.Session() as sess:
+    # Tell tensorflow not to hog all gpu memory and to multithread
+    tf_config = tf.ConfigProto(inter_op_parallelism_threads=args.num_cpus,
+                               intra_op_parallelism_threads=args.num_cpus)
+    tf_config.gpu_options.allow_growth = True
+
+    with tf.Session(config=tf_config) as sess:
 
         # Summary operations for tensorboard
         summary_op = tf.summary.merge_all()
@@ -178,7 +183,7 @@ def main(args):
     model = SGRU(summarize=args.summarize)
 
     loss_func = build_loss_func(model, image_rgb_real)
-    optimizer_func = tf.train.AdamOptimizer(learning_rate=0.0004).minimize(loss_func)
+    optimizer_func = tf.train.AdamOptimizer(learning_rate=args.lr).minimize(loss_func)
 
     train(model, loss_func, optimizer_func, image_rgb_real, args)
 
@@ -193,6 +198,7 @@ def get_args():
     parser.add_argument('output_dir', help='Output directory')
     parser.add_argument('--batch-size', type=int, default=1, help='Batch size')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
+    parser.add_argument('--lr', type=float, default=0.0004, help='Specify learning rate')
     parser.add_argument('--resume', action='store_true', help='Resume training models')
     parser.add_argument('--save-every', type=int, default=50, help='Save image every n iterations')
     parser.add_argument('--num-cpus', type=int, default=4, help='Num CPUs to load images with')

@@ -1,5 +1,7 @@
-Anime-Sketch-Coloring-with-Swish-Gated-Residual-UNET
-====================================================
+Anime Sketch Coloring with Swish-Gated Residual U-Net
+=====================================================
+
+Authors: _Gang Liu, Xin Chen, Yanzhong Hu_
 
 Using Deep Learning to colorize manga based on paper with same name
 
