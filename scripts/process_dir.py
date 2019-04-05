@@ -53,10 +53,10 @@ def process_image_sketch(fname):
     light_map = iu.add_rgb_channel(light_map)
     edge_pred = mod.predict(light_map, batch_size=1)
     edge_pred = edge_pred.transpose((3, 1, 2, 0))[0]
-    #color_sketch = get_color_sketch(edge_pred)
+    #color_sketch = iu.get_color_sketch(edge_pred)
     sketch = np.amax(edge_pred, 2)
-    #enhanced_sketch = get_enhanced_sketch(image_out)
-    #pured_sketch = get_pured_sketch(image_out)
+    #enhanced_sketch = iu.get_enhanced_sketch(image_out)
+    #pured_sketch = iu.get_pured_sketch(image_out)
     sketch = iu.get_sketch(sketch)
     cv2.imwrite(fname, sketch)
 
