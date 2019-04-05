@@ -7,7 +7,7 @@ import argparse
 import os
 from fnmatch import fnmatch
 from multiprocessing import Pool
-from img_utils import get_light_map, add_rgb_channel, normalize_img, get_sketch
+import img_utils as iu
 from keras.models import load_model
 import numpy as np
 import sys
@@ -47,17 +47,17 @@ def process_image_sketch(fname):
     light_map = np.zeros(image_in.shape, dtype=np.float)
 
     for channel in range(3):
-        light_map[channel] = get_light_map(image_in[channel])
+        light_map[channel] = iu.get_light_map(image_in[channel])
 
-    light_map = normalize_img(light_map)
-    light_map = add_rgb_channel(light_map)
+    light_map = iu.normalize_img(light_map)
+    light_map = iu.add_rgb_channel(light_map)
     edge_pred = mod.predict(light_map, batch_size=1)
     edge_pred = edge_pred.transpose((3, 1, 2, 0))[0]
     #color_sketch = get_color_sketch(edge_pred)
     sketch = np.amax(edge_pred, 2)
     #enhanced_sketch = get_enhanced_sketch(image_out)
     #pured_sketch = get_pured_sketch(image_out)
-    sketch = get_sketch(sketch)
+    sketch = iu.get_sketch(sketch)
     cv2.imwrite(fname, sketch)
 
 
