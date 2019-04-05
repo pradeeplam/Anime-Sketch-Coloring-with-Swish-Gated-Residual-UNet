@@ -7,9 +7,10 @@ import argparse
 import os
 from fnmatch import fnmatch
 from multiprocessing import Pool
-from img_utils import *
+from img_utils import get_light_map, add_rgb_channel, normalize_img, get_sketch
 from keras.models import load_model
 import numpy as np
+import sys
 
 import cv2
 
@@ -32,6 +33,11 @@ def process_image_sketch(fname):
     image_in = cv2.imread(fname)
     if image_in is None:
         return
+
+    if not os.path.isfile('mod.h5'):
+        sys.exit('Sketch model file missing! Download sketchKeras model from ' +
+                 'https://github.com/lllyasviel/sketchKeras/releases ' +
+                 'and save it to the scripts folder')
 
     mod = load_model('mod.h5')
     width = float(image_in.shape[1])
