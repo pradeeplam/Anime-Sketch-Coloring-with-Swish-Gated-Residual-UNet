@@ -44,9 +44,17 @@ class ImageGenerator(object):
 
 
     def load_image(self, img_path, read_mode):
-        img = cv2.imread(img_path.decode(), read_mode).astype(np.float32)
-        img /= 255.0
-        return img[:, :, np.newaxis] if read_mode == cv2.IMREAD_GRAYSCALE else img
+
+        image = cv2.imread(img_path.decode(), read_mode).astype(np.float32)
+
+        if read_mode == cv2.IMREAD_COLOR:
+            # BGR -> RGB
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        else:
+            # Add 3rd dimension to grayscale
+            image = image[:, :, np.newaxis]
+
+        return image
 
 
     def load_image_pairs(self, bw_img, rgb_img):

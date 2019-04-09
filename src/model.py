@@ -54,7 +54,7 @@ class SGRU(object):
 
     def __init__(self, summarize=False):
 
-        self.image_bw = tf.placeholder(tf.float32, shape=[None,None,None,1], name='img_bw')
+        self.image_bw = tf.placeholder(tf.float32, shape=[None, None, None, 1], name='img_bw')
         inputs = self.image_bw
 
         with tf.variable_scope('SGRU_MODEL'):
@@ -82,7 +82,13 @@ class SGRU(object):
             conv1_4_up = tf.layers.Conv2D(filters=27, kernel_size=1, activation=None,
                                           padding='same')(conv1_3_up)
 
-            self.images_rgb_fake = conv1_4_up
+            # self.images_rgb_fake = conv1_4_up
+            net = (conv1_4_up + 1.0) / 2.0 * 255.0
+            net = tf.transpose(net, perm=[3, 1, 2, 0])
+            split0, split1, split2 = tf.split(net, num_or_size_splits=3, axis=0)
+            net = tf.concat([split0, split1, split2], 3)
+            self.images_rgb_fake = net
+
 
         self.params = tf.trainable_variables(scope='SGRU_MODEL')
         self.saver = tf.saver = tf.train.Saver(self.params, max_to_keep=5)
@@ -116,13 +122,13 @@ class SGRU(object):
 
             if cat is None:
                 sgb_op = tf.layers.MaxPooling2D(pool_size=2, strides=2)(conv2)
-                swish = SwishMod(inputs)
-                swish = tf.layers.MaxPooling2D(pool_size=2, strides=2)(swish)
+                swish = tf.layers.MaxPooling2D(pool_size=2, strides=2)(inputs)
+                swish = SwishMod(swish)
                 concat = [sgb_op, swish]
             else:
                 sgb_op = Conv2DTransposeLReLU(filters=filters, strides=2, inputs=conv2)
-                swish = SwishMod(inputs)
-                swish = Conv2DTransposeLReLU(filters=filters, strides=2, inputs=swish)
+                swish = Conv2DTransposeLReLU(filters=filters, strides=2, inputs=inputs)
+                swish = SwishMod(swish)
                 concat = [sgb_op, swish, cat]
 
             return tf.concat(concat, axis=3), conv2
