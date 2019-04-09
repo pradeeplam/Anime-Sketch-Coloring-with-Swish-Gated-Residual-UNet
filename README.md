@@ -39,9 +39,3 @@ ${OUTPUT_DIR}/
     ├── events.out.tfevents (tensorboard)
     └── model.ckpt
 ```
-
-Preliminary Results
--------------------
-We are experiencing an issue where the generated images are washed out, or have a "watercolor" effect, and not as vibrant as the results in the original paper. The following image shows this (first column is the sketch input, second column is the original image, and the rest are the generated images):
-![Results](https://i.imgur.com/QDhX33A.jpg)
-If you see any issues with our implementation, please create a pull request or an issue. Thanks!
