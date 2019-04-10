@@ -95,7 +95,7 @@ def main(args):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('image_fname', help='Directory containing image subdirs')
+    parser.add_argument('image_fname', help='Input sketch image')
     parser.add_argument('ckpt_sgru_fname', help='Pretrained SGRU checkpoint filename')
     parser.add_argument('--show', action='store_true', default=False, help='Display results')
     parser.add_argument('--output-dir', type=str,
