@@ -71,9 +71,9 @@ def build_loss_func(sgru_model, image_rgb_real):
     loss_mean = tf.reduce_sum(tf.reduce_mean(loss_sum, reduction_indices=0))
 
     loss = loss_min * 0.999 + loss_mean * 0.001
-    loss_summary = tf.summary.scalar('Loss', loss)
-    loss_summary = tf.summary.scalar('Loss Min', loss_min)
-    loss_summary = tf.summary.scalar('Loss Mean', loss_mean)
+    tf.summary.scalar('Loss', loss)
+    tf.summary.scalar('Loss Min', loss_min)
+    tf.summary.scalar('Loss Mean', loss_mean)
     return loss
 
 
