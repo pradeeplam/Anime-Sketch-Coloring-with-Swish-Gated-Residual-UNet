@@ -191,7 +191,7 @@ def get_args():
     parser.add_argument('--batch-size', type=int, default=1, help='Batch size')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--lr', type=float, default=0.0001, help='Specify learning rate')
-    parser.add_argument('--save-every', type=int, default=50, help='Save image every n iterations')
+    parser.add_argument('--save-every', type=int, default=400, help='Save image every n iterations')
     parser.add_argument('--num-cpus', type=int, default=1, help='Num CPUs to load images with')
     parser.add_argument('--summarize', action='store_true',
                         help='Summarize vars and images for Tensorboard')
