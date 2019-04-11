@@ -6,10 +6,9 @@ import numpy as np
 
 class ImageGenerator(object):
 
-    def __init__(self, image_dir, num_cpus, batch_size):
+    def __init__(self, image_dir, num_cpus):
         self.rgb_paths, self.bw_paths = self.get_image_paths_train(image_dir)
-        self.batch_size = batch_size
-        self.num_batches = len(self.rgb_paths) // self.batch_size
+        self.num_images = len(self.rgb_paths)
         self.num_cpus = num_cpus
 
 
@@ -62,7 +61,7 @@ class ImageGenerator(object):
                 self.load_image(rgb_img, cv2.IMREAD_COLOR))
 
 
-    def load_batches(self):
+    def load_images(self):
 
         dataset = tf.data.Dataset.from_tensor_slices((self.bw_paths, self.rgb_paths))
 
@@ -77,7 +76,7 @@ class ImageGenerator(object):
             self.load_image_pairs, [bw_img, rgb_img], [tf.float32, tf.float32])),
             self.num_cpus)
 
-        dataset = dataset.batch(self.batch_size)
+        dataset = dataset.batch(1)
 
         bw_img, rgb_img = dataset.make_one_shot_iterator().get_next()
 
