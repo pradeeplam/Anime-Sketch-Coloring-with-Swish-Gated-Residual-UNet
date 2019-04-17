@@ -13,7 +13,7 @@ from model import SGRU
 
 def load_image(image_fname):
     """Load image and pad it to make dimensions divisible by 32"""
-    image = cv2.imread(args.image_fname, cv2.IMREAD_GRAYSCALE).astype(np.float32)
+    image = cv2.imread(image_fname, cv2.IMREAD_GRAYSCALE).astype(np.float32)
     rows, cols = image.shape[:2]
     dim_larger = max(rows, cols)
     dim_larger_pad = ((dim_larger // 32) + 1) * 32
@@ -32,7 +32,7 @@ def preprocess_images(image_bw, images_rgb_fake, dims_orig):
     image_bw = image_bw[0, :rows, :cols].astype(np.uint8)
     image_bw = cv2.cvtColor(image_bw, cv2.COLOR_GRAY2BGR)
 
-    # Cut RGB images to original suze
+    # Cut RGB images to original size
     images_rgb_fake = images_rgb_fake[:, :rows, :cols]
 
     # Remove clipping, convert to uint8
