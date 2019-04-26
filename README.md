@@ -5,7 +5,7 @@ Paper authors: _Gang Liu, Xin Chen, Yanzhong Hu_
 
 Implementation authors: _Alexander Koumis, Amlesh Sivanantham, Pradeep Lam, Georgio Pizzorni_
 
-This is an implementation of the paper _Anime Sketch Coloring with Swish-Gated Residual U-Net_, which uses uses deep learning to colorize manga sketches.
+This is an implementation of the paper _Anime Sketch Coloring with Swish-Gated Residual U-Net_, which uses uses deep learning to colorize anime line-art (sketches).
 
 BIG shout out to the paper authors Xin Chen and Gang Liu for helping us with implementation details that we initially got wrong.
 
@@ -51,7 +51,7 @@ Evaluting pre-trained model
 --------------------------
 To evaluate a trained model, you must train the weights yourself using the above procedure, or use our pretrained weights available [here](https://github.com/pradeeplam/Anime-Sketch-Coloring-with-Swish-Gated-Residual-UNet/releases/download/1.0/checkpoint.zip). Place your self-trained `model.ckpt.*` files inside of a directory `$CKPT_DIR` or unzip our provided `checkpoint.zip` file into a directory `$CKPT_DIR`.
 
-After you have placed the weights checkpoint files in `$CKPT_DIR`, you can use the script `src/evaluate.py` to see the results on your own image (written as `sketch_image.jpg` below). To display the results, run the script like this:
+After you have placed the weights checkpoint files in `$CKPT_DIR`, you can use the script `src/evaluate.py` to see the results on your own image (written as `sketch_image.jpg` below). The best results occur when the input image is 256x256 (similar to the dataset the model was trained on). To display the results, run the script like this:
 ```bash
 ./evaluate.py sketch_image.jpg $CKPT_DIR/model.ckpt --show
 ```
