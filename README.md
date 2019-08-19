@@ -30,7 +30,7 @@ data/
 │   └── images_rgb/
 └── vgg_19.ckpt
 ```
-You can populate the image directories using using your own dataset (see utility script `scripts/process_dir.py` for creating sketch/RGB pairs) or using the original dataset downloadable [here](https://github.com/pradeeplam/Anime-Sketch-Coloring-with-Swish-Gated-Residual-UNet/releases/tag/1.0).
+You can populate the image directories using using your own dataset (see utility script `scripts/process_dir.py` for creating sketch/RGB pairs).
 You can find the pretrained `vgg_19.ckpt` checkpoint file [here](http://download.tensorflow.org/models/vgg_19_2016_08_28.tar.gz).
 Once you have placed the dataset and VGG checkpoint in your data directory, start the training procedure using the `src/train.py` script:
 ```bash
